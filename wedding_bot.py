@@ -93,9 +93,6 @@ async def admin_reply_to_user(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 # --- ORDER LOGIC ---
 async def contact_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.text == "📞 Admin bilan bog'lanish":
-        return await start_chat(update, context)
-        
     context.user_data["name"] = update.message.contact.first_name
     context.user_data["phone"] = update.message.contact.phone_number
     prices = load_prices()
@@ -204,7 +201,7 @@ def main():
         states={
             CONTACT: [
                 MessageHandler(filters.CONTACT, contact_received),
-                MessageHandler(filters.TEXT("📞 Admin bilan bog'lanish"), start_chat)
+                MessageHandler(filters.Text(["📞 Admin bilan bog'lanish"]), start_chat)
             ],
             CHAT_WITH_ADMIN: [
                 CommandHandler("cancel", start),
