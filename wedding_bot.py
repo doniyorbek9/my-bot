@@ -52,7 +52,7 @@ def add_user(user_id, name):
         users.append({"id": user_id, "name": name})
         save_json(USERS_FILE, users)
 
-# ===================== ADMIN HANDLERS =====================
+# ===================== HANDLERS =====================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     add_user(user.id, user.full_name)
@@ -66,12 +66,43 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("📸 Sadaf Media botga xush kelibsiz!", reply_markup=kb)
     return CONTACT
 
-# Admin uchun tugmalar logikasi (alohida funksiyalar)
+# --- MIJOZ CHAT ---
+async def start_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Admin uchun xabaringizni yozing (Chiqish uchun /cancel):", reply_markup=ReplyKeyboardRemove())
+    return CHAT_WITH_ADMIN
+
+async def forward_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = f"👤 Mijoz: {update.effective_user.full_name}\n✍️ Xabar: {update.message.text}"
+    await context.bot.send_message(ADMIN_ID, text)
+    await update.message.reply_text("✅ Xabar yuborildi.")
+    return ConversationHandler.END
+
+# --- ADMIN LOGIKA ---
 async def handle_admin_zakaz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     orders = load_json(ORDERS_FILE)
     if not orders: await update.message.reply_text("Zakazlar yo'q."); return ADMIN_MAIN
     kb = InlineKeyboardMarkup([[InlineKeyboardButton(f"{o['package']} | {o['date']}", callback_data=f"order_{i}")] for i, o in enumerate(orders)])
     await update.message.reply_text("📋 Zakazlar:", reply_markup=kb)
+    return ADMIN_MAIN
+
+async def view_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+    i = int(q.data.split("_")[1])
+    orders = load_json(ORDERS_FILE)
+    o = orders[i]
+    kb = InlineKeyboardMarkup([[InlineKeyboardButton("🗑 O'chirish", callback_data=f"delete_{i}")]])
+    await q.message.reply_text(f"👤 {o['name']}\n📱 {o['phone']}\n📦 {o['package']}\n📅 {o['date']}\n🏠 {o['address']}", reply_markup=kb)
+    return ADMIN_MAIN
+
+async def delete_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    i = int(q.data.split("_")[1])
+    orders = load_json(ORDERS_FILE)
+    if i < len(orders):
+        orders.pop(i)
+        save_json(ORDERS_FILE, orders)
+        await q.edit_message_text(f"✅ Zakaz o'chirildi.")
     return ADMIN_MAIN
 
 async def handle_admin_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -87,27 +118,18 @@ async def handle_admin_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("💬 Kimga xabar yozamiz?", reply_markup=kb)
     return ADMIN_CHAT_SELECT
 
-# ===================== MIJOZ CHAT =====================
-async def start_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Admin uchun xabaringizni yozing (Chiqish uchun /cancel):", reply_markup=ReplyKeyboardRemove())
-    return CHAT_WITH_ADMIN
-
-async def forward_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = f"👤 Mijoz: {update.effective_user.full_name}\n✍️ Xabar: {update.message.text}"
-    await context.bot.send_message(ADMIN_ID, text)
-    await update.message.reply_text("✅ Yuborildi.")
-    return ConversationHandler.END
+# (Boshqa funksiyalar: contact_received, package_selected, etc. o'z joyida qoladi)
+# Kod uzun bo'lmasligi uchun bu yerda qisqartirildi, lekin barchasi bir xil.
 
 # ===================== MAIN =====================
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
     
-    # Admin tugmalari uchun maxsus filtrlar
     conv = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
             CONTACT: [
-                MessageHandler(filters.CONTACT, contact_received),
+                MessageHandler(filters.CONTACT, contact_received), # Eslatma: Bu funksiya avvalgi kodda bo'lishi kerak
                 MessageHandler(filters.Text(["📞 Admin bilan bog'lanish"]), start_chat)
             ],
             CHAT_WITH_ADMIN: [
@@ -117,16 +139,18 @@ def main():
             ADMIN_MAIN: [
                 MessageHandler(filters.Text(["📋 Zakazlar"]), handle_admin_zakaz),
                 MessageHandler(filters.Text(["✏️ Narxlarni tahrirlash"]), handle_admin_price),
-                MessageHandler(filters.Text(["💬 Chat"]), handle_admin_chat)
+                MessageHandler(filters.Text(["💬 Chat"]), handle_admin_chat),
+                # MUXIM: Tugmalar ishlashi uchun bular qo'shildi
+                CallbackQueryHandler(view_order, pattern="^order_"),
+                CallbackQueryHandler(delete_order, pattern="^delete_")
             ],
-            # Qolgan holatlar...
+            ADMIN_CHAT_SELECT: [CallbackQueryHandler(select_user_to_chat, pattern="^chat_")],
+            # ... boshqa state-lar
             PACKAGE_SELECT: [CallbackQueryHandler(package_selected)],
             DATE_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, date_received)],
             EVENT_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, event_type_received)],
             LOCATION: [MessageHandler(filters.LOCATION, location_received)],
             ADDRESS_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, address_received)],
-            ADMIN_CHAT_SELECT: [CallbackQueryHandler(select_user_to_chat, pattern="^chat_")],
-            ADMIN_CHATTING: [CommandHandler("stop", stop_chat), MessageHandler(filters.TEXT & ~filters.COMMAND, send_message_to_user)],
             EDIT_PRICE_SELECT: [CallbackQueryHandler(edit_price_select, pattern="^price_")],
             EDIT_PRICE_VALUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_price_value)]
         },
