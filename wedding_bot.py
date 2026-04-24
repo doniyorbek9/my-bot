@@ -112,10 +112,10 @@ async def contact_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         "📦 *Paketni tanlang:*\n\n"
-        "1️⃣ *700,000 so\'m* — 1-kun: 1 ta kamera\n"
-        "2️⃣ *1,400,000 so\'m* — 1-kun va 2-kun: 1 ta kamera\n"
-        "3️⃣ *2,000,000 so\'m* — 1-kun: 1 ta | 2-kun: 2 ta kamera\n"
-        "4️⃣ *VIP 300$* — 1-kun: 1 ta | 2-kun: 2 ta kamera + Kran kamera\n\n"
+        "1️⃣ *700,000 so\'m*"
+        "2️⃣ *1,400,000 so\'m*"
+        "3️⃣ *2,000,000 so\'m*"
+        "4️⃣ *VIP 300$*"
         "👇 Tanlang:",
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(buttons)
