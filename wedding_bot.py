@@ -30,16 +30,16 @@ USERS_FILE = "users.json"
     ADMIN_CHAT_SELECT, ADMIN_CHATTING, CHAT_WITH_ADMIN
 ) = range(12)
 
-# ===================== DATA FUNCTIONS =====================
+# ===================== FUNKSIYALAR =====================
 def load_json(filename):
     if os.path.exists(filename):
         with open(filename, "r", encoding="utf-8") as f:
             return json.load(f)
     return [] if filename != PRICES_FILE else {
-        "p1": {"name": "💍 Paket 1", "price": "700,000 so'm", "desc": "1 kun • 1 ta kamera"},
-        "p2": {"name": "💎 Paket 2", "price": "1,400,000 so'm", "desc": "2 kun • 1 ta kamera"},
-        "p3": {"name": "👑 Paket 3", "price": "2,000,000 so'm", "desc": "1-kun 1 ta kamera • 2-kun 2 ta kamera"},
-        "p4": {"name": "🎬 Paket 4 (VIP)", "price": "300$", "desc": "1-kun 1 ta • 2-kun 2 ta + Kran kamera"}
+        "p1": {"name": "💍 Paket 1", "price": "700,000 so'm"},
+        "p2": {"name": "💎 Paket 2", "price": "1,400,000 so'm"},
+        "p3": {"name": "👑 Paket 3", "price": "2,000,000 so'm"},
+        "p4": {"name": "🎬 Paket 4 (VIP)", "price": "300$"}
     }
 
 def save_json(filename, data):
@@ -52,168 +52,57 @@ def add_user(user_id, name):
         users.append({"id": user_id, "name": name})
         save_json(USERS_FILE, users)
 
-# ===================== HANDLERS =====================
+# ===================== ADMIN HANDLERS =====================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     add_user(user.id, user.full_name)
 
     if user.id == ADMIN_ID:
         kb = ReplyKeyboardMarkup([["📋 Zakazlar", "✏️ Narxlarni tahrirlash"], ["💬 Chat"]], resize_keyboard=True)
-        await update.message.reply_text("👨‍💼 Admin panelga xush kelibsiz!", reply_markup=kb)
+        await update.message.reply_text("👨‍💼 Admin panel.", reply_markup=kb)
         return ADMIN_MAIN
 
-    kb = ReplyKeyboardMarkup(
-        [[KeyboardButton("📱 Telefon raqamni yuborish", request_contact=True)], ["📞 Admin bilan bog'lanish"]],
-        resize_keyboard=True
-    )
-    await update.message.reply_text("📸 Sadaf Media botga xush kelibsiz!\nDavom etish uchun raqamingizni yuboring:", reply_markup=kb)
+    kb = ReplyKeyboardMarkup([[KeyboardButton("📱 Telefon raqamni yuborish", request_contact=True)], ["📞 Admin bilan bog'lanish"]], resize_keyboard=True)
+    await update.message.reply_text("📸 Sadaf Media botga xush kelibsiz!", reply_markup=kb)
     return CONTACT
 
-# --- MIJOZ -> ADMIN CHAT ---
+# Admin uchun tugmalar logikasi (alohida funksiyalar)
+async def handle_admin_zakaz(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    orders = load_json(ORDERS_FILE)
+    if not orders: await update.message.reply_text("Zakazlar yo'q."); return ADMIN_MAIN
+    kb = InlineKeyboardMarkup([[InlineKeyboardButton(f"{o['package']} | {o['date']}", callback_data=f"order_{i}")] for i, o in enumerate(orders)])
+    await update.message.reply_text("📋 Zakazlar:", reply_markup=kb)
+    return ADMIN_MAIN
+
+async def handle_admin_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    prices = load_json(PRICES_FILE)
+    kb = InlineKeyboardMarkup([[InlineKeyboardButton(v['name'], callback_data=f"price_{k}")] for k, v in prices.items()])
+    await update.message.reply_text("✏️ Tahrirlash uchun tanlang:", reply_markup=kb)
+    return EDIT_PRICE_SELECT
+
+async def handle_admin_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    users = load_json(USERS_FILE)
+    if not users: await update.message.reply_text("Foydalanuvchilar yo'q."); return ADMIN_MAIN
+    kb = InlineKeyboardMarkup([[InlineKeyboardButton(u['name'], callback_data=f"chat_{u['id']}")] for u in users])
+    await update.message.reply_text("💬 Kimga xabar yozamiz?", reply_markup=kb)
+    return ADMIN_CHAT_SELECT
+
+# ===================== MIJOZ CHAT =====================
 async def start_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Admin uchun xabaringizni yozing (Chiqish uchun /cancel):", reply_markup=ReplyKeyboardRemove())
     return CHAT_WITH_ADMIN
 
 async def forward_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    text = f"👤 Mijoz: {user.full_name}\n🆔 ID: {user.id}\n\n✍️ Xabar: {update.message.text}"
+    text = f"👤 Mijoz: {update.effective_user.full_name}\n✍️ Xabar: {update.message.text}"
     await context.bot.send_message(ADMIN_ID, text)
-    await update.message.reply_text("✅ Xabar yuborildi.")
+    await update.message.reply_text("✅ Yuborildi.")
     return ConversationHandler.END
-
-# --- ADMIN -> MIJOZ CHAT ---
-async def admin_chat_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    users = load_json(USERS_FILE)
-    if not users:
-        await update.message.reply_text("Foydalanuvchilar yo'q.")
-        return ADMIN_MAIN
-    kb = InlineKeyboardMarkup([[InlineKeyboardButton(u['name'], callback_data=f"chat_{u['id']}")] for u in users])
-    await update.message.reply_text("💬 Kimga xabar yubormoqchisiz?", reply_markup=kb)
-    return ADMIN_CHAT_SELECT
-
-async def select_user_to_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    await q.answer()
-    user_id = int(q.data.split("_")[1])
-    context.user_data["target_user_id"] = user_id
-    await q.message.edit_text(f"✅ Hozir chatdasiz. Xabar yozing (Chiqish uchun /stop):")
-    return ADMIN_CHATTING
-
-async def send_message_to_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    target_id = context.user_data.get("target_user_id")
-    try:
-        await context.bot.send_message(target_id, f"👨‍💼 Admin javobi:\n{update.message.text}")
-        await update.message.reply_text("✅ Yuborildi.")
-    except Exception as e:
-        await update.message.reply_text(f"❌ Xatolik: {e}")
-
-async def stop_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    kb = ReplyKeyboardMarkup([["📋 Zakazlar", "✏️ Narxlarni tahrirlash"], ["💬 Chat"]], resize_keyboard=True)
-    await update.message.reply_text("👋 Chat to'xtatildi.", reply_markup=kb)
-    return ADMIN_MAIN
-
-# --- ORDER LOGIC ---
-async def contact_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["name"] = update.message.contact.first_name
-    context.user_data["phone"] = update.message.contact.phone_number
-    prices = load_json(PRICES_FILE)
-    kb = InlineKeyboardMarkup([[InlineKeyboardButton(v["name"], callback_data=k)] for k, v in prices.items()])
-    await update.message.reply_text("📦 Paketni tanlang:", reply_markup=kb)
-    return PACKAGE_SELECT
-
-async def package_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    await q.answer()
-    context.user_data["package"] = load_json(PRICES_FILE)[q.data]["name"]
-    await q.edit_message_reply_markup(reply_markup=None)
-    await q.message.reply_text("📅 Sanani kiriting (05.04.2026):")
-    return DATE_INPUT
-
-async def date_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["date"] = update.message.text
-    events = ["💍 Nikoh", "👶 Chaqaloq", "👦 Xatna", "🎉 Banket", "🕋 Umra"]
-    kb = ReplyKeyboardMarkup([[KeyboardButton(e)] for e in events], resize_keyboard=True)
-    await update.message.reply_text("🎉 Tadbirni tanlang:", reply_markup=kb)
-    return EVENT_TYPE
-
-async def event_type_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["event"] = update.message.text
-    kb = ReplyKeyboardMarkup([[KeyboardButton("📍 Lokatsiya yuborish", request_location=True)]], resize_keyboard=True)
-    await update.message.reply_text("📍 Lokatsiyani yuboring:", reply_markup=kb)
-    return LOCATION
-
-async def location_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    loc = update.message.location
-    context.user_data["lat"] = loc.latitude
-    context.user_data["lon"] = loc.longitude
-    await update.message.reply_text("🏠 Manzil yozing:", reply_markup=ReplyKeyboardRemove())
-    return ADDRESS_INPUT
-
-async def address_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    u = context.user_data
-    order = {"name": u["name"], "phone": u["phone"], "package": u["package"], "date": u["date"], "event": u["event"], "address": update.message.text, "lat": u["lat"], "lon": u["lon"]}
-    orders = load_json(ORDERS_FILE)
-    orders.append(order)
-    save_json(ORDERS_FILE, orders)
-    await context.bot.send_message(ADMIN_ID, f"🔔 YANGI ZAKAZ!\n👤 {order['name']}\n📱 {order['phone']}\n📦 {order['package']}")
-    await update.message.reply_text("✅ Zakaz qabul qilindi!")
-    return ConversationHandler.END
-
-# --- ADMIN HANDLERS ---
-async def admin_main_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text
-    if text == "📋 Zakazlar":
-        orders = load_json(ORDERS_FILE)
-        if not orders: await update.message.reply_text("Zakazlar yo'q."); return ADMIN_MAIN
-        kb = InlineKeyboardMarkup([[InlineKeyboardButton(f"{o['package']} | {o['date']}", callback_data=f"order_{i}")] for i, o in enumerate(orders)])
-        await update.message.reply_text("📋 Zakazlar ro'yxati:", reply_markup=kb)
-    elif text == "✏️ Narxlarni tahrirlash":
-        prices = load_json(PRICES_FILE)
-        kb = InlineKeyboardMarkup([[InlineKeyboardButton(v['name'], callback_data=f"price_{k}")] for k, v in prices.items()])
-        await update.message.reply_text("✏️ Tanlang:", reply_markup=kb)
-        return EDIT_PRICE_SELECT
-    elif text == "💬 Chat":
-        return await admin_chat_list(update, context)
-    return ADMIN_MAIN
-
-async def view_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    await q.answer()
-    i = int(q.data.split("_")[1])
-    orders = load_json(ORDERS_FILE)
-    o = orders[i]
-    kb = InlineKeyboardMarkup([[InlineKeyboardButton("🗑 O'chirish", callback_data=f"delete_{i}")]])
-    await q.message.reply_text(f"👤 {o['name']}\n📦 {o['package']}\n🏠 {o['address']}", reply_markup=kb)
-    return ADMIN_MAIN
-
-async def delete_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    i = int(q.data.split("_")[1])
-    orders = load_json(ORDERS_FILE)
-    if i < len(orders):
-        removed = orders.pop(i)
-        save_json(ORDERS_FILE, orders)
-        await q.edit_message_text(f"✅ {removed['name']} o'chirildi.")
-    return ADMIN_MAIN
-
-async def edit_price_select(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    await q.answer()
-    context.user_data["edit_key"] = q.data.split("_")[1]
-    await q.edit_message_text("💰 Yangi narxni yozing:")
-    return EDIT_PRICE_VALUE
-
-async def edit_price_value(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    key = context.user_data["edit_key"]
-    prices = load_json(PRICES_FILE)
-    prices[key]["price"] = update.message.text
-    save_json(PRICES_FILE, prices)
-    await update.message.reply_text("✅ Narx yangilandi!")
-    return ADMIN_MAIN
 
 # ===================== MAIN =====================
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
+    
+    # Admin tugmalari uchun maxsus filtrlar
     conv = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
@@ -225,27 +114,23 @@ def main():
                 CommandHandler("cancel", start),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, forward_to_admin)
             ],
+            ADMIN_MAIN: [
+                MessageHandler(filters.Text(["📋 Zakazlar"]), handle_admin_zakaz),
+                MessageHandler(filters.Text(["✏️ Narxlarni tahrirlash"]), handle_admin_price),
+                MessageHandler(filters.Text(["💬 Chat"]), handle_admin_chat)
+            ],
+            # Qolgan holatlar...
             PACKAGE_SELECT: [CallbackQueryHandler(package_selected)],
             DATE_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, date_received)],
             EVENT_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, event_type_received)],
             LOCATION: [MessageHandler(filters.LOCATION, location_received)],
             ADDRESS_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, address_received)],
-            ADMIN_MAIN: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, admin_main_handler)
-            ],
             ADMIN_CHAT_SELECT: [CallbackQueryHandler(select_user_to_chat, pattern="^chat_")],
-            ADMIN_CHATTING: [
-                CommandHandler("stop", stop_chat),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, send_message_to_user)
-            ],
+            ADMIN_CHATTING: [CommandHandler("stop", stop_chat), MessageHandler(filters.TEXT & ~filters.COMMAND, send_message_to_user)],
             EDIT_PRICE_SELECT: [CallbackQueryHandler(edit_price_select, pattern="^price_")],
             EDIT_PRICE_VALUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_price_value)]
         },
         fallbacks=[CommandHandler("start", start)]
     )
     app.add_handler(conv)
-    print("🚀 Bot ishlayapti...")
     app.run_polling()
-
-if __name__ == "__main__":
-    main()
