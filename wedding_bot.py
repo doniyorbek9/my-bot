@@ -108,7 +108,7 @@ async def address_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
     order = {
         "name": u["name"], "phone": u["phone"], "package": u["package"], 
         "date": u["date"], "event": u["event"], "address": update.message.text,
-        "lat": u["lat"], "lon": u["lon"] # Kordinatalarni saqlash
+        "lat": u["lat"], "lon": u["lon"]
     }
     orders = load_json(ORDERS_FILE)
     orders.append(order)
@@ -132,14 +132,14 @@ async def view_order(update, context):
     orders = load_json(ORDERS_FILE)
     o = orders[i]
     
-    # 1. Karta (Lokatsiya)
+    # 1. Karta (Lokatsiya) - yozuvsiz
     await context.bot.send_location(
         chat_id=update.effective_chat.id,
         latitude=o['lat'],
         longitude=o['lon']
     )
     
-    # 2. Matn va tugmalar
+    # 2. Matn va tugmalar - alohida xabarda
     kb = InlineKeyboardMarkup([[InlineKeyboardButton("🗑 O'chirish", callback_data=f"delete_{i}")]])
     text = f"👤 {o['name']}\n📱 {o['phone']}\n📦 {o['package']}\n📅 {o['date']}\n🏠 {o['address']}"
     await context.bot.send_message(update.effective_chat.id, text, reply_markup=kb)
@@ -193,7 +193,7 @@ def main():
         states={
             CONTACT: [
                 MessageHandler(filters.CONTACT, contact_received),
-                MessageHandler(filters.Text(["📞 Admin bilan bog'lanish"]), lambda u, c: ... )
+                MessageHandler(filters.Text(["📞 Admin bilan bog'lanish"]), lambda u, c: None)
             ],
             ADMIN_MAIN: [
                 MessageHandler(filters.Text(["📋 Zakazlar"]), handle_admin_zakaz),
