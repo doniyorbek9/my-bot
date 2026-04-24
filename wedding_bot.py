@@ -27,8 +27,8 @@ USERS_FILE = "users.json"
     CONTACT, PACKAGE_SELECT, DATE_INPUT, EVENT_TYPE, 
     LOCATION, ADDRESS_INPUT, ADMIN_MAIN, 
     EDIT_PRICE_SELECT, EDIT_PRICE_VALUE, 
-    ADMIN_CHAT_SELECT, ADMIN_CHATTING
-) = range(11)
+    ADMIN_CHAT_SELECT, ADMIN_CHATTING, CHAT_WITH_ADMIN
+) = range(12)
 
 # ===================== DATA FUNCTIONS =====================
 def load_json(filename):
@@ -58,22 +58,35 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     add_user(user.id, user.full_name)
 
     if user.id == ADMIN_ID:
-        # Admin uchun tugmalar
         kb = ReplyKeyboardMarkup([["📋 Zakazlar", "✏️ Narxlarni tahrirlash"], ["💬 Chat"]], resize_keyboard=True)
         await update.message.reply_text("👨‍💼 Admin panelga xush kelibsiz!", reply_markup=kb)
         return ADMIN_MAIN
 
-    kb = ReplyKeyboardMarkup([[KeyboardButton("📱 Telefon raqamni yuborish", request_contact=True)]], resize_keyboard=True)
+    kb = ReplyKeyboardMarkup(
+        [[KeyboardButton("📱 Telefon raqamni yuborish", request_contact=True)], ["📞 Admin bilan bog'lanish"]],
+        resize_keyboard=True
+    )
     await update.message.reply_text("📸 Sadaf Media botga xush kelibsiz!\nDavom etish uchun raqamingizni yuboring:", reply_markup=kb)
     return CONTACT
 
-# --- ADMIN CHAT LOGIC ---
+# --- MIJOZ -> ADMIN CHAT ---
+async def start_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Admin uchun xabaringizni yozing (Chiqish uchun /cancel):", reply_markup=ReplyKeyboardRemove())
+    return CHAT_WITH_ADMIN
+
+async def forward_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    text = f"👤 Mijoz: {user.full_name}\n🆔 ID: {user.id}\n\n✍️ Xabar: {update.message.text}"
+    await context.bot.send_message(ADMIN_ID, text)
+    await update.message.reply_text("✅ Xabar yuborildi.")
+    return ConversationHandler.END
+
+# --- ADMIN -> MIJOZ CHAT ---
 async def admin_chat_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     users = load_json(USERS_FILE)
     if not users:
-        await update.message.reply_text("Hozircha foydalanuvchilar yo'q.")
+        await update.message.reply_text("Foydalanuvchilar yo'q.")
         return ADMIN_MAIN
-    
     kb = InlineKeyboardMarkup([[InlineKeyboardButton(u['name'], callback_data=f"chat_{u['id']}")] for u in users])
     await update.message.reply_text("💬 Kimga xabar yubormoqchisiz?", reply_markup=kb)
     return ADMIN_CHAT_SELECT
@@ -83,21 +96,20 @@ async def select_user_to_chat(update: Update, context: ContextTypes.DEFAULT_TYPE
     await q.answer()
     user_id = int(q.data.split("_")[1])
     context.user_data["target_user_id"] = user_id
-    await q.message.edit_text(f"✅ Chat rejimidasiz.\nXabar yozing (Chiqish uchun /stop):")
+    await q.message.edit_text(f"✅ Hozir chatdasiz. Xabar yozing (Chiqish uchun /stop):")
     return ADMIN_CHATTING
 
 async def send_message_to_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     target_id = context.user_data.get("target_user_id")
-    text = update.message.text
     try:
-        await context.bot.send_message(target_id, f"👨‍💼 Admin: {text}")
+        await context.bot.send_message(target_id, f"👨‍💼 Admin javobi:\n{update.message.text}")
         await update.message.reply_text("✅ Yuborildi.")
     except Exception as e:
         await update.message.reply_text(f"❌ Xatolik: {e}")
 
 async def stop_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     kb = ReplyKeyboardMarkup([["📋 Zakazlar", "✏️ Narxlarni tahrirlash"], ["💬 Chat"]], resize_keyboard=True)
-    await update.message.reply_text("👋 Chat to'xtatildi. Admin panelga qaytdingiz.", reply_markup=kb)
+    await update.message.reply_text("👋 Chat to'xtatildi.", reply_markup=kb)
     return ADMIN_MAIN
 
 # --- ORDER LOGIC ---
@@ -205,7 +217,14 @@ def main():
     conv = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
-            CONTACT: [MessageHandler(filters.CONTACT, contact_received)],
+            CONTACT: [
+                MessageHandler(filters.CONTACT, contact_received),
+                MessageHandler(filters.Text(["📞 Admin bilan bog'lanish"]), start_chat)
+            ],
+            CHAT_WITH_ADMIN: [
+                CommandHandler("cancel", start),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, forward_to_admin)
+            ],
             PACKAGE_SELECT: [CallbackQueryHandler(package_selected)],
             DATE_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, date_received)],
             EVENT_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, event_type_received)],
