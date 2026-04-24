@@ -392,7 +392,7 @@ def main():
         states={
             CONTACT: [
                 MessageHandler(filters.CONTACT, contact_received),
-                MessageHandler(filters.Text(["📞 Admin bilan bog\'lanish"]), contact_admin),
+                MessageHandler(filters.Regex("Admin bilan"), contact_admin),
             ],
             ADMIN_MAIN: [
                 MessageHandler(filters.Text(["📋 Zakazlar"]), handle_admin_zakaz),
