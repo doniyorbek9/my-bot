@@ -58,6 +58,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     add_user(user.id, user.full_name)
 
     if user.id == ADMIN_ID:
+        # Admin uchun tugmalar
         kb = ReplyKeyboardMarkup([["📋 Zakazlar", "✏️ Narxlarni tahrirlash"], ["💬 Chat"]], resize_keyboard=True)
         await update.message.reply_text("👨‍💼 Admin panelga xush kelibsiz!", reply_markup=kb)
         return ADMIN_MAIN
@@ -92,10 +93,11 @@ async def send_message_to_user(update: Update, context: ContextTypes.DEFAULT_TYP
         await context.bot.send_message(target_id, f"👨‍💼 Admin: {text}")
         await update.message.reply_text("✅ Yuborildi.")
     except Exception as e:
-        await update.message.reply_text(f"❌ Xatolik (ehtimol foydalanuvchi botni bloklagan): {e}")
+        await update.message.reply_text(f"❌ Xatolik: {e}")
 
 async def stop_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("👋 Chat to'xtatildi. Admin panelga qaytdingiz.", reply_markup=ReplyKeyboardMarkup([["📋 Zakazlar", "✏️ Narxlarni tahrirlash"], ["💬 Chat"]], resize_keyboard=True))
+    kb = ReplyKeyboardMarkup([["📋 Zakazlar", "✏️ Narxlarni tahrirlash"], ["💬 Chat"]], resize_keyboard=True)
+    await update.message.reply_text("👋 Chat to'xtatildi. Admin panelga qaytdingiz.", reply_markup=kb)
     return ADMIN_MAIN
 
 # --- ORDER LOGIC ---
