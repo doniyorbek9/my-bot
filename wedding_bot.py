@@ -89,7 +89,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ADMIN_MAIN
 
     kb = ReplyKeyboardMarkup(
-        [[KeyboardButton("📱 Telefon raqamni yuborish", request_contact=True)]],
+        [
+            [KeyboardButton("📱 Telefon raqamni yuborish", request_contact=True)],
+            [KeyboardButton("📞 Admin bilan bog\'lanish")]
+        ],
         resize_keyboard=True
     )
     await update.message.reply_text(
@@ -100,6 +103,29 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return CONTACT
 
 # ===================== MIJOZ FLOW =====================
+async def contact_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    context.user_data["waiting_admin_reply"] = True
+
+    # Adminga xabar
+    await context.bot.send_message(
+        ADMIN_ID,
+        f"📞 *Yangi murojaat!*\n\n"
+        f"👤 Ism: {user.full_name}\n"
+        f"🆔 ID: `{user.id}`\n"
+        f"@{user.username or 'username yoq'}\n\n"
+        f"Javob berish uchun: /reply_{user.id} xabar yozing",
+        parse_mode="Markdown"
+    )
+
+    await update.message.reply_text(
+        "✅ *Adminга xabaringiz yuborildi!*\n\n"
+        "Tez orada siz bilan bog\'lanamiz. 🙏\n\n"
+        "Yoki zakaz qilish uchun telefon raqamingizni yuboring 👇",
+        parse_mode="Markdown"
+    )
+    return CONTACT
+
 async def contact_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["name"] = update.message.contact.first_name
     context.user_data["phone"] = update.message.contact.phone_number
@@ -112,10 +138,10 @@ async def contact_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         "📦 *Paketni tanlang:*\n\n"
-        "1️⃣ *700,000 so\'m* — 1-kun: 1 ta kamera\n"
-        "2️⃣ *1,400,000 so\'m* — 1-kun va 2-kun: 1 ta kamera\n"
-        "3️⃣ *2,000,000 so\'m* — 1-kun: 1 ta | 2-kun: 2 ta kamera\n"
-        "4️⃣ *VIP 300$* — 1-kun: 1 ta | 2-kun: 2 ta kamera + Kran kamera\n\n"
+        "1️⃣ *700,000 so\'m*\n"
+        "2️⃣ *1,400,000 so\'m*\n"
+        "3️⃣ *2,000,000 so\'m*\n"
+        "4️⃣ *VIP 300$*\n\n"
         "👇 Tanlang:",
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(buttons)
@@ -320,10 +346,54 @@ async def admin_send_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
 # ===================== MAIN =====================
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
+    async def reply_to_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if update.effective_user.id != ADMIN_ID:
+            return
+        args = context.args
+        if not args or len(args) < 2:
+            await update.message.reply_text("Ishlatish: /reply_<user_id> <xabar>\nMisol: /reply_123456 Salom, sizga qo\'ng\'iroq qilamiz!")
+            return
+        try:
+            target_id = int(args[0])
+            message = " ".join(args[1:])
+            await context.bot.send_message(
+                target_id,
+                f"📩 *Admin javobi:*\n\n{message}",
+                parse_mode="Markdown"
+            )
+            await update.message.reply_text("✅ Xabar yuborildi!")
+        except Exception as e:
+            await update.message.reply_text(f"❌ Xato: {e}")
+
+    async def handle_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if update.effective_user.id != ADMIN_ID:
+            return
+        text = update.message.text  # /reply_123456 xabar matni
+        try:
+            parts = text.split(" ", 1)
+            user_id = int(parts[0].replace("/reply_", ""))
+            message = parts[1] if len(parts) > 1 else ""
+            if not message:
+                await update.message.reply_text("Xabarni yozing!\nMisol: /reply_123456 Salom!")
+                return
+            await context.bot.send_message(
+                user_id,
+                f"📩 *Admin javobi:*\n\n{message}",
+                parse_mode="Markdown"
+            )
+            await update.message.reply_text("✅ Xabar yuborildi!")
+        except Exception as e:
+            await update.message.reply_text(f"❌ Xato: {e}")
+
+    app.add_handler(MessageHandler(filters.Regex(r"^/reply_\d+"), handle_reply))
+
     conv = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
-            CONTACT: [MessageHandler(filters.CONTACT, contact_received)],
+            CONTACT: [
+                MessageHandler(filters.CONTACT, contact_received),
+                MessageHandler(filters.Text(["📞 Admin bilan bog\'lanish"]), contact_admin),
+            ],
             ADMIN_MAIN: [
                 MessageHandler(filters.Text(["📋 Zakazlar"]), handle_admin_zakaz),
                 MessageHandler(filters.Text(["✏️ Narxlarni tahrirlash"]), handle_admin_price),
