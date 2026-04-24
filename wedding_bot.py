@@ -31,10 +31,26 @@ USERS_FILE = "users.json"
 
 # ===================== DEFAULT PRICES =====================
 DEFAULT_PRICES = {
-    "p1": {"name": "💍 Paket 1", "price": "700,000 so'm", "desc": "1 kun • 1 ta kamera"},
-    "p2": {"name": "💎 Paket 2", "price": "1,400,000 so'm", "desc": "2 kun • 1 ta kamera"},
-    "p3": {"name": "👑 Paket 3", "price": "2,000,000 so'm", "desc": "1-kun 1 kamera, 2-kun 2 kamera"},
-    "p4": {"name": "🎬 Paket 4 (VIP)", "price": "300$", "desc": "1-kun 1 kamera, 2-kun 2 kamera + Kran kamera"}
+    "p1": {
+        "name": "1️⃣ Paket — 700,000 so'm",
+        "price": "700,000 so'm",
+        "desc": "1-kun: 1 ta kamera"
+    },
+    "p2": {
+        "name": "2️⃣ Paket — 1,400,000 so'm",
+        "price": "1,400,000 so'm",
+        "desc": "1-kun: 1 ta kamera | 2-kun: 1 ta kamera"
+    },
+    "p3": {
+        "name": "3️⃣ Paket — 2,000,000 so'm",
+        "price": "2,000,000 so'm",
+        "desc": "1-kun: 1 ta kamera | 2-kun: 2 ta kamera"
+    },
+    "p4": {
+        "name": "4️⃣ VIP Paket — 300$",
+        "price": "300$",
+        "desc": "1-kun: 1 ta kamera | 2-kun: 2 ta kamera + Kran kamera"
+    }
 }
 
 # ===================== HELPERS =====================
@@ -91,11 +107,16 @@ async def contact_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
     prices = load_json(PRICES_FILE)
     buttons = []
     for k, v in prices.items():
-        label = f"{v['name']} — {v['price']}\n📝 {v.get('desc', '')}"
+        label = f"{v['name']}\n📹 {v.get('desc', '')}"
         buttons.append([InlineKeyboardButton(label, callback_data=k)])
 
     await update.message.reply_text(
-        "📦 *Paketni tanlang:*",
+        "📦 *Paketni tanlang:*\n\n"
+        "1️⃣ *700,000 so\'m* — 1-kun: 1 ta kamera\n"
+        "2️⃣ *1,400,000 so\'m* — 1-kun va 2-kun: 1 ta kamera\n"
+        "3️⃣ *2,000,000 so\'m* — 1-kun: 1 ta | 2-kun: 2 ta kamera\n"
+        "4️⃣ *VIP 300$* — 1-kun: 1 ta | 2-kun: 2 ta kamera + Kran kamera\n\n"
+        "👇 Tanlang:",
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(buttons)
     )
