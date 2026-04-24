@@ -59,33 +59,79 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if user.id == ADMIN_ID:
         kb = ReplyKeyboardMarkup([["📋 Zakazlar", "✏️ Narxlarni tahrirlash"], ["💬 Chat"]], resize_keyboard=True)
-        await update.message.reply_text("👨‍💼 Admin panel.", reply_markup=kb)
+        await update.message.reply_text("👨‍💼 Admin panelga xush kelibsiz!", reply_markup=kb)
         return ADMIN_MAIN
 
     kb = ReplyKeyboardMarkup([[KeyboardButton("📱 Telefon raqamni yuborish", request_contact=True)], ["📞 Admin bilan bog'lanish"]], resize_keyboard=True)
-    await update.message.reply_text("📸 Sadaf Media botga xush kelibsiz!", reply_markup=kb)
+    await update.message.reply_text("📸 Sadaf Media botga xush kelibsiz!\nDavom etish uchun raqamingizni yuboring:", reply_markup=kb)
     return CONTACT
 
-# --- MIJOZ CHAT ---
+# --- MIJOZ FLOW ---
+async def contact_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["name"] = update.message.contact.first_name
+    context.user_data["phone"] = update.message.contact.phone_number
+    prices = load_json(PRICES_FILE)
+    kb = InlineKeyboardMarkup([[InlineKeyboardButton(v["name"], callback_data=k)] for k, v in prices.items()])
+    await update.message.reply_text("📦 Paketni tanlang:", reply_markup=kb)
+    return PACKAGE_SELECT
+
+async def package_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+    context.user_data["package"] = load_json(PRICES_FILE)[q.data]["name"]
+    await q.edit_message_reply_markup(reply_markup=None)
+    await q.message.reply_text("📅 Sanani kiriting (masalan: 25.04.2026):")
+    return DATE_INPUT
+
+async def date_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["date"] = update.message.text
+    events = ["💍 Nikoh", "👶 Chaqaloq", "👦 Xatna", "🎉 Banket", "🕋 Umra"]
+    kb = ReplyKeyboardMarkup([[KeyboardButton(e)] for e in events], resize_keyboard=True)
+    await update.message.reply_text("🎉 Tadbirni tanlang:", reply_markup=kb)
+    return EVENT_TYPE
+
+async def event_type_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["event"] = update.message.text
+    kb = ReplyKeyboardMarkup([[KeyboardButton("📍 Lokatsiya yuborish", request_location=True)]], resize_keyboard=True)
+    await update.message.reply_text("📍 Lokatsiyani yuboring:", reply_markup=kb)
+    return LOCATION
+
+async def location_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    loc = update.message.location
+    context.user_data["lat"] = loc.latitude
+    context.user_data["lon"] = loc.longitude
+    await update.message.reply_text("🏠 Manzilni yozing:", reply_markup=ReplyKeyboardRemove())
+    return ADDRESS_INPUT
+
+async def address_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    u = context.user_data
+    order = {"name": u["name"], "phone": u["phone"], "package": u["package"], "date": u["date"], "event": u["event"], "address": update.message.text}
+    orders = load_json(ORDERS_FILE)
+    orders.append(order)
+    save_json(ORDERS_FILE, orders)
+    await context.bot.send_message(ADMIN_ID, f"🔔 YANGI ZAKAZ!\n👤 {order['name']}\n📱 {order['phone']}\n📦 {order['package']}\n📅 {order['date']}")
+    await update.message.reply_text("✅ Zakaz qabul qilindi!")
+    return ConversationHandler.END
+
+# --- CHAT FLOW ---
 async def start_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Admin uchun xabaringizni yozing (Chiqish uchun /cancel):", reply_markup=ReplyKeyboardRemove())
     return CHAT_WITH_ADMIN
 
 async def forward_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = f"👤 Mijoz: {update.effective_user.full_name}\n✍️ Xabar: {update.message.text}"
-    await context.bot.send_message(ADMIN_ID, text)
+    await context.bot.send_message(ADMIN_ID, f"👤 Mijoz: {update.effective_user.full_name}\n✍️ Xabar: {update.message.text}")
     await update.message.reply_text("✅ Xabar yuborildi.")
     return ConversationHandler.END
 
-# --- ADMIN LOGIKA ---
-async def handle_admin_zakaz(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# --- ADMIN FLOW ---
+async def handle_admin_zakaz(update, context):
     orders = load_json(ORDERS_FILE)
     if not orders: await update.message.reply_text("Zakazlar yo'q."); return ADMIN_MAIN
     kb = InlineKeyboardMarkup([[InlineKeyboardButton(f"{o['package']} | {o['date']}", callback_data=f"order_{i}")] for i, o in enumerate(orders)])
     await update.message.reply_text("📋 Zakazlar:", reply_markup=kb)
     return ADMIN_MAIN
 
-async def view_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def view_order(update, context):
     q = update.callback_query
     await q.answer()
     i = int(q.data.split("_")[1])
@@ -95,31 +141,56 @@ async def view_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await q.message.reply_text(f"👤 {o['name']}\n📱 {o['phone']}\n📦 {o['package']}\n📅 {o['date']}\n🏠 {o['address']}", reply_markup=kb)
     return ADMIN_MAIN
 
-async def delete_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def delete_order(update, context):
     q = update.callback_query
     i = int(q.data.split("_")[1])
     orders = load_json(ORDERS_FILE)
-    if i < len(orders):
-        orders.pop(i)
-        save_json(ORDERS_FILE, orders)
-        await q.edit_message_text(f"✅ Zakaz o'chirildi.")
+    orders.pop(i)
+    save_json(ORDERS_FILE, orders)
+    await q.edit_message_text(f"✅ Zakaz o'chirildi.")
     return ADMIN_MAIN
 
-async def handle_admin_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_admin_price(update, context):
     prices = load_json(PRICES_FILE)
     kb = InlineKeyboardMarkup([[InlineKeyboardButton(v['name'], callback_data=f"price_{k}")] for k, v in prices.items()])
-    await update.message.reply_text("✏️ Tahrirlash uchun tanlang:", reply_markup=kb)
+    await update.message.reply_text("✏️ Tanlang:", reply_markup=kb)
     return EDIT_PRICE_SELECT
 
-async def handle_admin_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def edit_price_select(update, context):
+    q = update.callback_query
+    await q.answer()
+    context.user_data["edit_key"] = q.data.split("_")[1]
+    await q.edit_message_text("💰 Yangi narxni yozing:")
+    return EDIT_PRICE_VALUE
+
+async def edit_price_value(update, context):
+    key = context.user_data["edit_key"]
+    prices = load_json(PRICES_FILE)
+    prices[key]["price"] = update.message.text
+    save_json(PRICES_FILE, prices)
+    await update.message.reply_text("✅ Narx yangilandi!")
+    return ADMIN_MAIN
+
+async def handle_admin_chat(update, context):
     users = load_json(USERS_FILE)
-    if not users: await update.message.reply_text("Foydalanuvchilar yo'q."); return ADMIN_MAIN
     kb = InlineKeyboardMarkup([[InlineKeyboardButton(u['name'], callback_data=f"chat_{u['id']}")] for u in users])
-    await update.message.reply_text("💬 Kimga xabar yozamiz?", reply_markup=kb)
+    await update.message.reply_text("💬 Kimga yozamiz?", reply_markup=kb)
     return ADMIN_CHAT_SELECT
 
-# (Boshqa funksiyalar: contact_received, package_selected, etc. o'z joyida qoladi)
-# Kod uzun bo'lmasligi uchun bu yerda qisqartirildi, lekin barchasi bir xil.
+async def select_user_to_chat(update, context):
+    q = update.callback_query
+    await q.answer()
+    context.user_data["target"] = int(q.data.split("_")[1])
+    await q.message.reply_text("✅ Xabar yozing (To'xtatish uchun /stop):")
+    return ADMIN_CHATTING
+
+async def send_message_to_user(update, context):
+    await context.bot.send_message(context.user_data["target"], f"👨‍💼 Admin: {update.message.text}")
+    await update.message.reply_text("✅ Yuborildi.")
+
+async def stop_chat(update, context):
+    await update.message.reply_text("👋 Chat to'xtatildi.")
+    return ADMIN_MAIN
 
 # ===================== MAIN =====================
 def main():
@@ -129,7 +200,7 @@ def main():
         entry_points=[CommandHandler("start", start)],
         states={
             CONTACT: [
-                MessageHandler(filters.CONTACT, contact_received), # Eslatma: Bu funksiya avvalgi kodda bo'lishi kerak
+                MessageHandler(filters.CONTACT, contact_received),
                 MessageHandler(filters.Text(["📞 Admin bilan bog'lanish"]), start_chat)
             ],
             CHAT_WITH_ADMIN: [
@@ -140,21 +211,25 @@ def main():
                 MessageHandler(filters.Text(["📋 Zakazlar"]), handle_admin_zakaz),
                 MessageHandler(filters.Text(["✏️ Narxlarni tahrirlash"]), handle_admin_price),
                 MessageHandler(filters.Text(["💬 Chat"]), handle_admin_chat),
-                # MUXIM: Tugmalar ishlashi uchun bular qo'shildi
                 CallbackQueryHandler(view_order, pattern="^order_"),
                 CallbackQueryHandler(delete_order, pattern="^delete_")
             ],
-            ADMIN_CHAT_SELECT: [CallbackQueryHandler(select_user_to_chat, pattern="^chat_")],
-            # ... boshqa state-lar
             PACKAGE_SELECT: [CallbackQueryHandler(package_selected)],
             DATE_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, date_received)],
             EVENT_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, event_type_received)],
             LOCATION: [MessageHandler(filters.LOCATION, location_received)],
             ADDRESS_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, address_received)],
             EDIT_PRICE_SELECT: [CallbackQueryHandler(edit_price_select, pattern="^price_")],
-            EDIT_PRICE_VALUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_price_value)]
+            EDIT_PRICE_VALUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_price_value)],
+            ADMIN_CHAT_SELECT: [CallbackQueryHandler(select_user_to_chat, pattern="^chat_")],
+            ADMIN_CHATTING: [CommandHandler("stop", stop_chat), MessageHandler(filters.TEXT, send_message_to_user)]
         },
         fallbacks=[CommandHandler("start", start)]
     )
+    
     app.add_handler(conv)
+    print("🚀 Bot ishlayapti...")
     app.run_polling()
+
+if __name__ == "__main__":
+    main()
