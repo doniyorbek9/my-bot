@@ -1,0 +1,22 @@
+{
+  "p1": {
+    "name": "💍 Paket 1",
+    "price": "700,000 so'm",
+    "desc": "1 kun • 1 ta kamera"
+  },
+  "p2": {
+    "name": "💎 Paket 2",
+    "price": "1,400,000 so'm",
+    "desc": "2 kun • 1 ta kamera"
+  },
+  "p3": {
+    "name": "👑 Paket 3",
+    "price": "2,000,000 so'm",
+    "desc": "1-kun 1 ta kamera • 2-kun 2 ta kamera"
+  },
+  "p4": {
+    "name": "🎬 Paket 4 (VIP)",
+    "price": "300$",
+    "desc": "1-kun 1 ta • 2-kun 2 ta + Kran kamera"
+  }
+}
