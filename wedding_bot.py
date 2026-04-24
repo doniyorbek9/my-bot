@@ -91,7 +91,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     kb = ReplyKeyboardMarkup(
         [
             [KeyboardButton("📱 Telefon raqamni yuborish", request_contact=True)],
-            [KeyboardButton("📞 Admin bilan bog\'lanish")]
+            [KeyboardButton("📞 Admin bilan bog'lanish")]
         ],
         resize_keyboard=True
     )
@@ -107,21 +107,17 @@ async def contact_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     context.user_data["waiting_admin_reply"] = True
 
-    # Adminga xabar
     await context.bot.send_message(
         ADMIN_ID,
         f"📞 *Yangi murojaat!*\n\n"
         f"👤 Ism: {user.full_name}\n"
         f"🆔 ID: `{user.id}`\n"
-        f"@{user.username or 'username yoq'}\n\n"
         f"Javob berish uchun: /reply_{user.id} xabar yozing",
         parse_mode="Markdown"
     )
 
     await update.message.reply_text(
-        "✅ *Adminга xabaringiz yuborildi!*\n\n"
-        "Tez orada siz bilan bog\'lanamiz. 🙏\n\n"
-        "Yoki zakaz qilish uchun telefon raqamingizni yuboring 👇",
+        "✅ *Adminга xabaringiz yuborildi!*\n\nTez orada siz bilan bog'lanamiz. 🙏",
         parse_mode="Markdown"
     )
     return CONTACT
@@ -133,16 +129,11 @@ async def contact_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
     prices = load_json(PRICES_FILE)
     buttons = []
     for k, v in prices.items():
-        label = f"{v['name']}\n📹 {v.get('desc', '')}"
+        label = f"{v['name']}"
         buttons.append([InlineKeyboardButton(label, callback_data=k)])
 
     await update.message.reply_text(
-        "📦 *Paketni tanlang:*\n\n"
-        "1️⃣ *700,000 so\'m* — 1-kun: 1 ta kamera\n"
-        "2️⃣ *1,400,000 so\'m* — 1-kun va 2-kun: 1 ta kamera\n"
-        "3️⃣ *2,000,000 so\'m* — 1-kun: 1 ta | 2-kun: 2 ta kamera\n"
-        "4️⃣ *VIP 300$* — 1-kun: 1 ta | 2-kun: 2 ta kamera + Kran kamera\n\n"
-        "👇 Tanlang:",
+        "📦 *Paketni tanlang:*",
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(buttons)
     )
@@ -153,19 +144,18 @@ async def package_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await q.answer()
     prices = load_json(PRICES_FILE)
     pkg = prices[q.data]
-    context.user_data["package"] = f"{pkg['name']} — {pkg['price']} ({pkg.get('desc', '')})"
+    context.user_data["package"] = f"{pkg['name']} — {pkg['price']}"
     await q.edit_message_reply_markup(reply_markup=None)
     await q.message.reply_text(
-        f"✅ Tanlangan: *{pkg['name']}* — {pkg['price']}\n\n"
-        "📅 *Toy sanasini kiriting:*\n"
-        "Misol: `25.04.2026` yoki `4.4.2026`",
+        f"✅ Tanlangan: *{pkg['name']}*\n\n"
+        "📅 *Toy sanasini kiriting:*",
         parse_mode="Markdown"
     )
     return DATE_INPUT
 
 async def date_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["date"] = update.message.text
-    events = ["💍 Nikoh", "👶 Chaqaloq", "👦 Xatna", "🎉 Banket", "🕋 Xaj/Umra", "🔤 Alifbe", "🎂 Tug'ilgan kun"]
+    events = ["💍 Nikoh", "👶 Chaqaloq", "👦 Xatna", "🎉 Banket", "🕋 Xaj/Umra"]
     kb = ReplyKeyboardMarkup([[KeyboardButton(e)] for e in events], resize_keyboard=True, one_time_keyboard=True)
     await update.message.reply_text("🎉 *Tadbir turini tanlang:*", parse_mode="Markdown", reply_markup=kb)
     return EVENT_TYPE
@@ -188,7 +178,7 @@ async def location_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["lat"] = loc.latitude
     context.user_data["lon"] = loc.longitude
     await update.message.reply_text(
-        "🏠 Toy bo'ladigan *manzilni* yozing:\n(Misol: Yunusobod 12-mavze, Oq oltin restoran)",
+        "🏠 Toy bo'ladigan *manzilni* yozing:",
         parse_mode="Markdown",
         reply_markup=ReplyKeyboardRemove()
     )
@@ -207,35 +197,17 @@ async def address_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
     orders.append(order)
     save_json(ORDERS_FILE, orders)
 
-    admin_msg = (
-        f"🔔 *YANGI ZAKAZ KELDI!*\n\n"
-        f"👤 Ism: {order['name']}\n"
-        f"📱 Tel: `{order['phone']}`\n"
-        f"🎉 Tadbir: {order['event']}\n"
-        f"📦 Paket: {order['package']}\n"
-        f"📅 Sana: {order['date']}\n"
-        f"🏠 Manzil: {order['address']}\n\n"
-        f"📍 Lokatsiya quyida 👇"
-    )
-    await context.bot.send_message(ADMIN_ID, admin_msg, parse_mode="Markdown")
-    await context.bot.send_location(ADMIN_ID, latitude=order["lat"], longitude=order["lon"])
-
-    await update.message.reply_text(
-        "✅ *Zakazingiz qabul qilindi!*\n\nTez orada siz bilan bog'lanamiz. Rahmat! 🙏",
-        parse_mode="Markdown"
-    )
+    await context.bot.send_message(ADMIN_ID, f"🔔 *YANGI ZAKAZ!*\n👤 {order['name']}\n📱 {order['phone']}", parse_mode="Markdown")
+    await update.message.reply_text("✅ *Zakazingiz qabul qilindi!*", parse_mode="Markdown")
     return ConversationHandler.END
 
 # ===================== ADMIN PANEL =====================
 async def handle_admin_zakaz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     orders = load_json(ORDERS_FILE)
     if not orders:
-        await update.message.reply_text("📭 Hozircha zakazlar yo'q.")
+        await update.message.reply_text("📭 Zakazlar yo'q.")
         return ADMIN_MAIN
-    buttons = []
-    for i, o in enumerate(orders):
-        label = f"#{i+1} | {o['event']} | {o['date']} | {o['name']}"
-        buttons.append([InlineKeyboardButton(label, callback_data=f"order_{i}")])
+    buttons = [[InlineKeyboardButton(f"#{i+1} | {o['name']}", callback_data=f"order_{i}")] for i, o in enumerate(orders)]
     await update.message.reply_text("📋 *Zakazlar:*", parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
     return ADMIN_MAIN
 
@@ -244,146 +216,76 @@ async def view_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await q.answer()
     i = int(q.data.split("_")[1])
     orders = load_json(ORDERS_FILE)
-    if i >= len(orders):
-        await q.edit_message_text("❌ Zakaz topilmadi.")
-        return ADMIN_MAIN
     o = orders[i]
+    
+    # 1. Karta (Lokatsiya)
     await context.bot.send_location(update.effective_chat.id, latitude=o['lat'], longitude=o['lon'])
-    text = (
-        f"📋 *Zakaz #{i+1}*\n\n"
-        f"👤 Ism: {o['name']}\n"
-        f"📱 Tel: `{o['phone']}`\n"
-        f"🎉 Tadbir: {o['event']}\n"
-        f"📦 Paket: {o['package']}\n"
-        f"📅 Sana: {o['date']}\n"
-        f"🏠 Manzil: {o['address']}"
-    )
+    
+    # 2. Ma'lumotlar
+    text = f"👤 {o['name']}\n📱 {o['phone']}\n📦 {o['package']}\n📅 {o['date']}\n🏠 {o['address']}"
     kb = InlineKeyboardMarkup([[InlineKeyboardButton("🗑 O'chirish", callback_data=f"delete_{i}")]])
-    await context.bot.send_message(update.effective_chat.id, text, parse_mode="Markdown", reply_markup=kb)
+    await context.bot.send_message(update.effective_chat.id, text, reply_markup=kb)
     return ADMIN_MAIN
 
-async def delete_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def delete_order(update, context):
     q = update.callback_query
-    await q.answer()
     i = int(q.data.split("_")[1])
     orders = load_json(ORDERS_FILE)
-    if i < len(orders):
-        orders.pop(i)
-        save_json(ORDERS_FILE, orders)
-        await q.edit_message_text("✅ Zakaz o'chirildi.")
+    orders.pop(i)
+    save_json(ORDERS_FILE, orders)
+    await q.edit_message_text("✅ O'chirildi.")
     return ADMIN_MAIN
 
 async def handle_admin_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
     prices = load_json(PRICES_FILE)
-    buttons = [[InlineKeyboardButton(f"{v['name']} — {v['price']}", callback_data=f"price_{k}")] for k, v in prices.items()]
-    await update.message.reply_text("✏️ *Qaysi paketni tahrirlaysiz?*", parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
+    buttons = [[InlineKeyboardButton(v['name'], callback_data=f"price_{k}")] for k, v in prices.items()]
+    await update.message.reply_text("✏️ *Tahrirlash:*", parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
     return EDIT_PRICE_SELECT
 
 async def edit_price_select(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
-    key = q.data.replace("price_", "")
-    context.user_data["edit_key"] = key
-    prices = load_json(PRICES_FILE)
-    pkg = prices[key]
-    await q.edit_message_text(
-        f"✏️ *{pkg['name']}* tahrirlash\n\n"
-        f"Joriy narx: {pkg['price']}\n"
-        f"Joriy tavsif: {pkg.get('desc', '')}\n\n"
-        "Yangi ma'lumotni yuboring:\n"
-        "`narx | tavsif`\n\n"
-        "Misol: `900,000 so'm | 1 kun, 1 ta kamera`",
-        parse_mode="Markdown"
-    )
+    context.user_data["edit_key"] = q.data.replace("price_", "")
+    await q.edit_message_text("💰 Yangi narxni yozing:")
     return EDIT_PRICE_VALUE
 
 async def edit_price_value(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.strip()
     key = context.user_data.get("edit_key")
     prices = load_json(PRICES_FILE)
-    if "|" in text:
-        parts = text.split("|", 1)
-        prices[key]["price"] = parts[0].strip()
-        prices[key]["desc"] = parts[1].strip()
-    else:
-        prices[key]["price"] = text
+    prices[key]["price"] = update.message.text
     save_json(PRICES_FILE, prices)
-    await update.message.reply_text(
-        f"✅ *{prices[key]['name']}* yangilandi!\n"
-        f"💰 Narx: {prices[key]['price']}\n"
-        f"📝 Tavsif: {prices[key].get('desc', '')}",
-        parse_mode="Markdown"
-    )
+    await update.message.reply_text("✅ Yangilandi!")
     return ADMIN_MAIN
 
 async def handle_admin_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     users = load_json(USERS_FILE)
-    users = [u for u in users if u['id'] != ADMIN_ID]
-    if not users:
-        await update.message.reply_text("👥 Hozircha foydalanuvchilar yo'q.")
-        return ADMIN_MAIN
     buttons = [[InlineKeyboardButton(u['name'], callback_data=f"chat_{u['id']}")] for u in users]
-    await update.message.reply_text("💬 *Kimga xabar yubormoqchisiz?*", parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
+    await update.message.reply_text("💬 *Kimga yozamiz?*", parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
     return ADMIN_CHAT_SELECT
 
 async def admin_chat_select(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
-    await q.answer()
     context.user_data["chat_target"] = int(q.data.split("_")[1])
-    await q.edit_message_text("✍️ Xabaringizni yozing:")
+    await q.edit_message_text("✍️ Xabar yozing:")
     return ADMIN_CHATTING
 
 async def admin_send_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    target_id = context.user_data.get("chat_target")
-    if target_id:
-        try:
-            await context.bot.send_message(target_id, f"📩 *Admin xabari:*\n\n{update.message.text}", parse_mode="Markdown")
-            await update.message.reply_text("✅ Xabar yuborildi!")
-        except Exception as e:
-            await update.message.reply_text(f"❌ Yuborib bo'lmadi: {e}")
+    target = context.user_data.get("chat_target")
+    await context.bot.send_message(target, f"📩 Admin: {update.message.text}")
+    await update.message.reply_text("✅ Yuborildi!")
     return ADMIN_MAIN
 
 # ===================== MAIN =====================
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
-    async def reply_to_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        if update.effective_user.id != ADMIN_ID:
-            return
-        args = context.args
-        if not args or len(args) < 2:
-            await update.message.reply_text("Ishlatish: /reply_<user_id> <xabar>\nMisol: /reply_123456 Salom, sizga qo\'ng\'iroq qilamiz!")
-            return
-        try:
-            target_id = int(args[0])
-            message = " ".join(args[1:])
-            await context.bot.send_message(
-                target_id,
-                f"📩 *Admin javobi:*\n\n{message}",
-                parse_mode="Markdown"
-            )
-            await update.message.reply_text("✅ Xabar yuborildi!")
-        except Exception as e:
-            await update.message.reply_text(f"❌ Xato: {e}")
-
+    
+    # /reply_ ID handler
     async def handle_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        if update.effective_user.id != ADMIN_ID:
-            return
-        text = update.message.text  # /reply_123456 xabar matni
-        try:
-            parts = text.split(" ", 1)
-            user_id = int(parts[0].replace("/reply_", ""))
-            message = parts[1] if len(parts) > 1 else ""
-            if not message:
-                await update.message.reply_text("Xabarni yozing!\nMisol: /reply_123456 Salom!")
-                return
-            await context.bot.send_message(
-                user_id,
-                f"📩 *Admin javobi:*\n\n{message}",
-                parse_mode="Markdown"
-            )
-            await update.message.reply_text("✅ Xabar yuborildi!")
-        except Exception as e:
-            await update.message.reply_text(f"❌ Xato: {e}")
+        if update.effective_user.id != ADMIN_ID: return
+        parts = update.message.text.split(" ", 1)
+        user_id = int(parts[0].replace("/reply_", ""))
+        await context.bot.send_message(user_id, f"📩 Admin: {parts[1]}")
+        await update.message.reply_text("✅ Yuborildi!")
 
     app.add_handler(MessageHandler(filters.Regex(r"^/reply_\d+"), handle_reply))
 
@@ -392,7 +294,8 @@ def main():
         states={
             CONTACT: [
                 MessageHandler(filters.CONTACT, contact_received),
-                MessageHandler(filters.Regex("Admin bilan"), contact_admin),
+                # TUZATILGAN JOYI:
+                MessageHandler(filters.Text("📞 Admin bilan bog'lanish"), contact_admin),
             ],
             ADMIN_MAIN: [
                 MessageHandler(filters.Text(["📋 Zakazlar"]), handle_admin_zakaz),
