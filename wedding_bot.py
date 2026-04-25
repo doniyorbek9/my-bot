@@ -14,347 +14,795 @@ from telegram.ext import (
     filters, ContextTypes
 )
 
-# ===================== CONFIG =====================
-ADMIN_ID = 7948989650
-BOT_TOKEN = os.getenv("TOKEN")
+# ╔══════════════════════════════════════╗
+# ║           BOT SOZLAMALARI            ║
+# ╚══════════════════════════════════════╝
+ADMIN_ID   = 7948989650
+BOT_TOKEN  = os.getenv("TOKEN")
 
 PRICES_FILE = "prices.json"
 ORDERS_FILE = "orders.json"
 USERS_FILE  = "users.json"
 
 (
-    LANG_SELECT, CONTACT, PACKAGE_SELECT, DATE_INPUT, EVENT_TYPE,
-    LOCATION, ADDRESS_INPUT, ADMIN_MAIN,
-    EDIT_PRICE_SELECT, EDIT_PRICE_VALUE,
-    ADMIN_CHAT_SELECT, ADMIN_CHATTING,
-    BROADCAST_INPUT
+    LANG_SELECT,
+    CONTACT,
+    PKG_SELECT,
+    DATE_INPUT,
+    EVENT_SELECT,
+    LOCATION_INPUT,
+    ADDRESS_INPUT,
+    ADMIN_HOME,
+    EDIT_PKG_SELECT,
+    EDIT_PKG_VALUE,
+    CHAT_USER_SELECT,
+    CHAT_SEND,
+    BROADCAST_WAIT,
 ) = range(13)
 
-# ===================== TARJIMALAR =====================
-T = {
+# ╔══════════════════════════════════════╗
+# ║         KO'P TILLIK MATNLAR          ║
+# ╚══════════════════════════════════════╝
+TEXTS = {
+
+    # ── 1. O'ZBEK (LOTIN) ──────────────────────────────────────────
     "uz": {
-        "welcome":        "📸 *Sadaf Media*ga xush kelibsiz!\n\nDavom etish uchun telefon raqamingizni yuboring 👇",
-        "send_contact":   "📱 Telefon raqamni yuborish",
-        "contact_admin":  "📞 Admin bilan bog'lanish",
-        "choose_package": "📦 *Paketni tanlang:*\n\n1️⃣ *700,000 so'm* — 1-kun: 1 ta kamera\n2️⃣ *1,400,000 so'm* — 1-kun va 2-kun: 1 ta kamera\n3️⃣ *2,000,000 so'm* — 1-kun: 1 ta | 2-kun: 2 ta kamera\n4️⃣ *VIP 300$* — 1-kun: 1 ta | 2-kun: 2 ta + Kran\n\n👇 Tanlang:",
-        "chosen":         "✅ Tanlangan: *{name}* — {price}\n\n📅 *Toy sanasini kiriting:*\nMisol: `25.04.2026`",
-        "enter_date":     "📅 Toy sanasini kiriting:\nMisol: `25.04.2026`",
-        "choose_event":   "🎉 *Tadbir turini tanlang:*",
-        "events":         ["💍 Nikoh","👶 Chaqaloq","👦 Xatna","🎉 Banket","🕋 Xaj/Umra","🔤 Alifbe","🎂 Tug'ilgan kun"],
-        "send_location":  "📍 Toy bo'ladigan *joylashuvni* yuboring:",
-        "loc_btn":        "📍 Lokatsiya yuborish",
-        "enter_address":  "🏠 Toy bo'ladigan *manzilni* yozing:\n(Misol: Yunusobod 12-mavze, Oq oltin restoran)",
-        "order_done":     "✅ *Zakazingiz qabul qilindi!*\n\nTez orada siz bilan bog'lanamiz. Rahmat! 🙏",
-        "admin_notified": "✅ *Admin bilan bog'landingiz!*\n\nTez orada javob berishadi. 🙏\n\nYoki zakaz qilish uchun telefon raqamingizni yuboring 👇",
-        "new_contact":    "📞 *Yangi murojaat!*\n\n👤 {name}\n🆔 `{uid}`\n@{username}\n\nJavob: /reply_{uid} xabar",
+        "flag":            "🇺🇿 O'zbek (Lotin)",
+        "welcome": (
+            "🎬 *Sadaf Media* — Professional to'y videografiya xizmati!\n\n"
+            "📹 Biz sizning eng muhim kunlaringizni\n"
+            "    abadiy xotirada saqlaymiz.\n\n"
+            "📱 Davom etish uchun *telefon raqamingizni* yuboring:"
+        ),
+        "btn_contact":    "📱 Telefon raqamni yuborish",
+        "btn_call_admin": "📞 Admin bilan bog'lanish",
+        "btn_change_lang":"🌐 Tilni o'zgartirish",
+        "contact_sent": (
+            "✅ Rahmat! Raqamingiz qabul qilindi.\n\n"
+            "👇 Endi quyidagi *paketlardan birini tanlang:*\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "1️⃣  *700 000 so'm*\n"
+            "      📹 1-kun • 1 ta kamera\n\n"
+            "2️⃣  *1 400 000 so'm*\n"
+            "      📹 1-kun va 2-kun • 1 ta kamera\n\n"
+            "3️⃣  *2 000 000 so'm*\n"
+            "      📹 1-kun: 1 kamera | 2-kun: 2 kamera\n\n"
+            "4️⃣  *VIP — 300$*\n"
+            "      📹 1-kun: 1 kamera | 2-kun: 2 kamera\n"
+            "      🎥 + Professional Kran kamera\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━"
+        ),
+        "pkg_chosen": (
+            "✅ Siz tanladingiz:\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "{pkg}\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "📅 Endi *toy sanasini* yozing.\n\n"
+            "📌 *Format:* `05.06.2026`\n"
+            "    (kun.oy.yil)"
+        ),
+        "ask_event": (
+            "✅ Sana qabul qilindi: *{date}*\n\n"
+            "🎊 Endi *tadbir turini* tanlang:\n"
+            "    (Quyidagi tugmalardan birini bosing)"
+        ),
+        "events": [
+            "💍 Nikoh toyi", "🎂 Tug'ilgan kun", "👦 Xatna toyi",
+            "🎉 Banket", "🕋 Xaj / Umra", "🔤 Alifbe bayrami", "👶 Chaqaloq toyi",
+        ],
+        "ask_location": (
+            "✅ Tadbir: *{event}*\n\n"
+            "📍 Endi *toy bo'ladigan joyning lokatsiyasini* yuboring.\n\n"
+            "💡 *Qanday yuborish kerak?*\n"
+            "    Quyidagi tugmani bosing ↓"
+        ),
+        "btn_location": "📍 Lokatsiyani yuborish",
+        "ask_address": (
+            "✅ Lokatsiya qabul qilindi!\n\n"
+            "🏠 Endi *manzilni so'z bilan* yozing.\n\n"
+            "📌 *Misol:*\n"
+            "    Toshkent, Yunusobod tumani,\n"
+            "    Navruz ko'chasi 15, «Oq oltin» restoran"
+        ),
+        "order_done": (
+            "🎉 *Zakazingiz muvaffaqiyatli qabul qilindi!*\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "👤 Ism:       {name}\n"
+            "📱 Telefon:   {phone}\n"
+            "📦 Paket:     {pkg}\n"
+            "📅 Sana:      {date}\n"
+            "🎊 Tadbir:    {event}\n"
+            "🏠 Manzil:    {address}\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "📞 Tez orada siz bilan bog'lanamiz!\n"
+            "⏰ Ish vaqti: 09:00 — 22:00\n\n"
+            "Rahmat! 🙏"
+        ),
+        "call_admin_sent": (
+            "✅ *Xabaringiz adminga yuborildi!*\n\n"
+            "📞 Tez orada siz bilan bog'lanishadi.\n"
+            "⏰ Ish vaqti: 09:00 — 22:00\n\n"
+            "Yoki zakaz qilish uchun:\n"
+            "👇 Telefon raqamingizni yuboring"
+        ),
+        "lang_changed": "✅ Til o'zgartirildi: *O'zbek (Lotin)*",
     },
+
+    # ── 2. O'ZBEK (KIRILL) ─────────────────────────────────────────
+    "uz_cyr": {
+        "flag":            "🇺🇿 Ўзбек (Кирилл)",
+        "welcome": (
+            "🎬 *Садаф Медиа* — Профессионал тўй видеография хизмати!\n\n"
+            "📹 Биз сизнинг энг муҳим кунларингизни\n"
+            "    абадий хотирада сақлаймиз.\n\n"
+            "📱 Давом этиш учун *телефон рақамингизни* юборинг:"
+        ),
+        "btn_contact":    "📱 Телефон рақамни юбориш",
+        "btn_call_admin": "📞 Админ билан боғланиш",
+        "btn_change_lang":"🌐 Тилни ўзгартириш",
+        "contact_sent": (
+            "✅ Раҳмат! Рақамингиз қабул қилинди.\n\n"
+            "👇 Энди қуйидаги *пакетлардан бирини танланг:*\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "1️⃣  *700 000 сўм*\n"
+            "      📹 1-кун • 1 та камера\n\n"
+            "2️⃣  *1 400 000 сўм*\n"
+            "      📹 1-кун ва 2-кун • 1 та камера\n\n"
+            "3️⃣  *2 000 000 сўм*\n"
+            "      📹 1-кун: 1 камера | 2-кун: 2 камера\n\n"
+            "4️⃣  *VIP — 300$*\n"
+            "      📹 1-кун: 1 камера | 2-кун: 2 камера\n"
+            "      🎥 + Профессионал Кран камера\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━"
+        ),
+        "pkg_chosen": (
+            "✅ Сиз танладингиз:\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "{pkg}\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "📅 Энди *тўй санасини* ёзинг.\n\n"
+            "📌 *Формат:* `05.06.2026`\n"
+            "    (кун.ой.йил)"
+        ),
+        "ask_event": (
+            "✅ Сана қабул қилинди: *{date}*\n\n"
+            "🎊 Энди *тадбир турини* танланг:\n"
+            "    (Қуйидаги тугмалардан бирини босинг)"
+        ),
+        "events": [
+            "💍 Никоҳ тўйи", "🎂 Туғилган кун", "👦 Хатна тўйи",
+            "🎉 Банкет", "🕋 Ҳаж / Умра", "🔤 Алифбе байрами", "👶 Чақалоқ тўйи",
+        ],
+        "ask_location": (
+            "✅ Тадбир: *{event}*\n\n"
+            "📍 Энди *тўй бўладиган жойнинг локациясини* юборинг.\n\n"
+            "💡 *Қандай юбориш керак?*\n"
+            "    Қуйидаги тугмани босинг ↓"
+        ),
+        "btn_location": "📍 Локацияни юбориш",
+        "ask_address": (
+            "✅ Локация қабул қилинди!\n\n"
+            "🏠 Энди *манзилни сўз билан* ёзинг.\n\n"
+            "📌 *Мисол:*\n"
+            "    Тошкент, Юнусобод тумани,\n"
+            "    Навруз кўчаси 15, «Оқ олтин» ресторан"
+        ),
+        "order_done": (
+            "🎉 *Заказингиз муваффақиятли қабул қилинди!*\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "👤 Исм:       {name}\n"
+            "📱 Телефон:   {phone}\n"
+            "📦 Пакет:     {pkg}\n"
+            "📅 Сана:      {date}\n"
+            "🎊 Тадбир:    {event}\n"
+            "🏠 Манзил:    {address}\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "📞 Тез орада сиз билан боғланамиз!\n"
+            "⏰ Иш вақти: 09:00 — 22:00\n\n"
+            "Раҳмат! 🙏"
+        ),
+        "call_admin_sent": (
+            "✅ *Хабарингиз админга юборилди!*\n\n"
+            "📞 Тез орада сиз билан боғланишади.\n"
+            "⏰ Иш вақти: 09:00 — 22:00\n\n"
+            "Ёки заказ қилиш учун:\n"
+            "👇 Телефон рақамингизни юборинг"
+        ),
+        "lang_changed": "✅ Тил ўзгартирилди: *Ўзбек (Кирилл)*",
+    },
+
+    # ── 3. РУССКИЙ ─────────────────────────────────────────────────
     "ru": {
-        "welcome":        "📸 Добро пожаловать в *Sadaf Media*!\n\nОтправьте номер телефона для продолжения 👇",
-        "send_contact":   "📱 Отправить номер телефона",
-        "contact_admin":  "📞 Связаться с администратором",
-        "choose_package": "📦 *Выберите пакет:*\n\n1️⃣ *700 000 сум* — 1 день: 1 камера\n2️⃣ *1 400 000 сум* — 1-й и 2-й день: 1 камера\n3️⃣ *2 000 000 сум* — 1-й день: 1 | 2-й день: 2 камеры\n4️⃣ *VIP 300$* — 1-й день: 1 | 2-й день: 2 камеры + Кран\n\n👇 Выберите:",
-        "chosen":         "✅ Выбрано: *{name}* — {price}\n\n📅 *Введите дату торжества:*\nПример: `25.04.2026`",
-        "enter_date":     "📅 Введите дату торжества:\nПример: `25.04.2026`",
-        "choose_event":   "🎉 *Выберите тип мероприятия:*",
-        "events":         ["💍 Никох","👶 Чақалоқ","👦 Хатна","🎉 Банкет","🕋 Хаж/Умра","🔤 Алифбе","🎂 День рождения"],
-        "send_location":  "📍 Отправьте *местоположение* торжества:",
-        "loc_btn":        "📍 Отправить локацию",
-        "enter_address":  "🏠 Напишите *адрес* торжества:\n(Пример: Юнусабад, 12-квартал, ресторан Ок олтин)",
-        "order_done":     "✅ *Заказ принят!*\n\nМы свяжемся с вами в ближайшее время. Спасибо! 🙏",
-        "admin_notified": "✅ *Сообщение отправлено администратору!*\n\nОжидайте ответа. 🙏\n\nИли отправьте номер телефона для оформления заказа 👇",
-        "new_contact":    "📞 *Новое обращение!*\n\n👤 {name}\n🆔 `{uid}`\n@{username}\n\nОтвет: /reply_{uid} текст",
+        "flag":            "🇷🇺 Русский",
+        "welcome": (
+            "🎬 *Sadaf Media* — Профессиональная видеосъёмка свадеб!\n\n"
+            "📹 Мы сохраним ваши самые важные моменты\n"
+            "    навсегда в памяти.\n\n"
+            "📱 Для продолжения отправьте *номер телефона:*"
+        ),
+        "btn_contact":    "📱 Отправить номер телефона",
+        "btn_call_admin": "📞 Связаться с администратором",
+        "btn_change_lang":"🌐 Сменить язык",
+        "contact_sent": (
+            "✅ Спасибо! Номер принят.\n\n"
+            "👇 Выберите один из *пакетов:*\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "1️⃣  *700 000 сум*\n"
+            "      📹 1 день • 1 камера\n\n"
+            "2️⃣  *1 400 000 сум*\n"
+            "      📹 1-й и 2-й день • 1 камера\n\n"
+            "3️⃣  *2 000 000 сум*\n"
+            "      📹 1-й день: 1 | 2-й день: 2 камеры\n\n"
+            "4️⃣  *VIP — 300$*\n"
+            "      📹 1-й день: 1 | 2-й день: 2 камеры\n"
+            "      🎥 + Профессиональная крановая камера\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━"
+        ),
+        "pkg_chosen": (
+            "✅ Вы выбрали:\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "{pkg}\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "📅 Введите *дату торжества.*\n\n"
+            "📌 *Формат:* `05.06.2026`\n"
+            "    (день.месяц.год)"
+        ),
+        "ask_event": (
+            "✅ Дата принята: *{date}*\n\n"
+            "🎊 Выберите *тип мероприятия:*\n"
+            "    (Нажмите одну из кнопок ниже)"
+        ),
+        "events": [
+            "💍 Свадьба", "🎂 День рождения", "👦 Хатна",
+            "🎉 Банкет", "🕋 Хадж / Умра", "🔤 Алифбе", "👶 Рождение ребёнка",
+        ],
+        "ask_location": (
+            "✅ Мероприятие: *{event}*\n\n"
+            "📍 Отправьте *геолокацию* места проведения.\n\n"
+            "💡 *Как отправить?*\n"
+            "    Нажмите кнопку ниже ↓"
+        ),
+        "btn_location": "📍 Отправить геолокацию",
+        "ask_address": (
+            "✅ Геолокация принята!\n\n"
+            "🏠 Напишите *адрес* словами.\n\n"
+            "📌 *Пример:*\n"
+            "    Ташкент, Юнусабадский р-н,\n"
+            "    ул. Навруз 15, ресторан «Ок Олтин»"
+        ),
+        "order_done": (
+            "🎉 *Ваш заказ успешно принят!*\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "👤 Имя:        {name}\n"
+            "📱 Телефон:    {phone}\n"
+            "📦 Пакет:      {pkg}\n"
+            "📅 Дата:       {date}\n"
+            "🎊 Событие:    {event}\n"
+            "🏠 Адрес:      {address}\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "📞 Мы свяжемся с вами в ближайшее время!\n"
+            "⏰ Время работы: 09:00 — 22:00\n\n"
+            "Спасибо! 🙏"
+        ),
+        "call_admin_sent": (
+            "✅ *Сообщение отправлено администратору!*\n\n"
+            "📞 Мы свяжемся с вами в ближайшее время.\n"
+            "⏰ Время работы: 09:00 — 22:00\n\n"
+            "Или для оформления заказа:\n"
+            "👇 Отправьте номер телефона"
+        ),
+        "lang_changed": "✅ Язык изменён: *Русский*",
     },
+
+    # ── 4. ENGLISH ──────────────────────────────────────────────────
     "en": {
-        "welcome":        "📸 Welcome to *Sadaf Media*!\n\nPlease share your phone number to continue 👇",
-        "send_contact":   "📱 Share phone number",
-        "contact_admin":  "📞 Contact admin",
-        "choose_package": "📦 *Choose a package:*\n\n1️⃣ *700,000 UZS* — Day 1: 1 camera\n2️⃣ *1,400,000 UZS* — Day 1 & 2: 1 camera\n3️⃣ *2,000,000 UZS* — Day 1: 1 | Day 2: 2 cameras\n4️⃣ *VIP $300* — Day 1: 1 | Day 2: 2 cameras + Crane\n\n👇 Select:",
-        "chosen":         "✅ Selected: *{name}* — {price}\n\n📅 *Enter the event date:*\nExample: `25.04.2026`",
-        "enter_date":     "📅 Enter the event date:\nExample: `25.04.2026`",
-        "choose_event":   "🎉 *Select event type:*",
-        "events":         ["💍 Wedding","👶 Baby","👦 Circumcision","🎉 Banquet","🕋 Hajj/Umrah","🔤 Alifbe","🎂 Birthday"],
-        "send_location":  "📍 Send the *location* of the event:",
-        "loc_btn":        "📍 Send location",
-        "enter_address":  "🏠 Write the *address* of the event:\n(Example: Yunusobod district, Oq oltin restaurant)",
-        "order_done":     "✅ *Order received!*\n\nWe will contact you shortly. Thank you! 🙏",
-        "admin_notified": "✅ *Message sent to admin!*\n\nWe will reply soon. 🙏\n\nOr share your phone to place an order 👇",
-        "new_contact":    "📞 *New inquiry!*\n\n👤 {name}\n🆔 `{uid}`\n@{username}\n\nReply: /reply_{uid} message",
+        "flag":            "🇬🇧 English",
+        "welcome": (
+            "🎬 *Sadaf Media* — Professional Wedding Videography!\n\n"
+            "📹 We capture your most important moments\n"
+            "    and preserve them forever.\n\n"
+            "📱 Please share your *phone number* to continue:"
+        ),
+        "btn_contact":    "📱 Share phone number",
+        "btn_call_admin": "📞 Contact admin",
+        "btn_change_lang":"🌐 Change language",
+        "contact_sent": (
+            "✅ Thank you! Number received.\n\n"
+            "👇 Please choose one of our *packages:*\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "1️⃣  *700,000 UZS*\n"
+            "      📹 Day 1 • 1 camera\n\n"
+            "2️⃣  *1,400,000 UZS*\n"
+            "      📹 Day 1 & Day 2 • 1 camera\n\n"
+            "3️⃣  *2,000,000 UZS*\n"
+            "      📹 Day 1: 1 cam | Day 2: 2 cams\n\n"
+            "4️⃣  *VIP — $300*\n"
+            "      📹 Day 1: 1 cam | Day 2: 2 cams\n"
+            "      🎥 + Professional Crane camera\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━"
+        ),
+        "pkg_chosen": (
+            "✅ You selected:\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "{pkg}\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "📅 Now enter the *event date.*\n\n"
+            "📌 *Format:* `05.06.2026`\n"
+            "    (day.month.year)"
+        ),
+        "ask_event": (
+            "✅ Date accepted: *{date}*\n\n"
+            "🎊 Now select the *type of event:*\n"
+            "    (Tap one of the buttons below)"
+        ),
+        "events": [
+            "💍 Wedding", "🎂 Birthday", "👦 Circumcision",
+            "🎉 Banquet", "🕋 Hajj / Umrah", "🔤 Alifbe", "👶 Baby Shower",
+        ],
+        "ask_location": (
+            "✅ Event: *{event}*\n\n"
+            "📍 Please send the *location* of the venue.\n\n"
+            "💡 *How to send?*\n"
+            "    Tap the button below ↓"
+        ),
+        "btn_location": "📍 Send location",
+        "ask_address": (
+            "✅ Location received!\n\n"
+            "🏠 Now write the *venue address* in words.\n\n"
+            "📌 *Example:*\n"
+            "    Tashkent, Yunusobod district,\n"
+            "    15 Navruz St, Oq Oltin restaurant"
+        ),
+        "order_done": (
+            "🎉 *Your order has been received!*\n\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "👤 Name:      {name}\n"
+            "📱 Phone:     {phone}\n"
+            "📦 Package:   {pkg}\n"
+            "📅 Date:      {date}\n"
+            "🎊 Event:     {event}\n"
+            "🏠 Address:   {address}\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            "📞 We will contact you shortly!\n"
+            "⏰ Working hours: 09:00 — 22:00\n\n"
+            "Thank you! 🙏"
+        ),
+        "call_admin_sent": (
+            "✅ *Your message has been sent to admin!*\n\n"
+            "📞 We will get back to you shortly.\n"
+            "⏰ Working hours: 09:00 — 22:00\n\n"
+            "Or to place an order:\n"
+            "👇 Please share your phone number"
+        ),
+        "lang_changed": "✅ Language changed: *English*",
     },
 }
 
-def tr(lang, key, **kwargs):
-    text = T.get(lang, T["uz"]).get(key, T["uz"].get(key, key))
-    return text.format(**kwargs) if kwargs else text
+def t(lang, key, **kw):
+    text = TEXTS.get(lang, TEXTS["uz"]).get(key, TEXTS["uz"].get(key, ""))
+    return text.format(**kw) if kw else text
 
-# ===================== HELPERS =====================
-def load_json(filename):
-    if os.path.exists(filename):
-        with open(filename, "r", encoding="utf-8") as f:
+
+# ╔══════════════════════════════════════╗
+# ║           JSON YORDAMCHILAR          ║
+# ╚══════════════════════════════════════╝
+DEFAULT_PRICES = {
+    "p1": {"label": "1️⃣  Paket — 700 000 so'm",   "price": "700 000 so'm",   "desc": "1-kun: 1 ta kamera"},
+    "p2": {"label": "2️⃣  Paket — 1 400 000 so'm", "price": "1 400 000 so'm", "desc": "2 kun: 1 ta kamera"},
+    "p3": {"label": "3️⃣  Paket — 2 000 000 so'm", "price": "2 000 000 so'm", "desc": "1-kun: 1 ta | 2-kun: 2 ta kamera"},
+    "p4": {"label": "4️⃣  VIP Paket — 300$",        "price": "300$",            "desc": "1-kun: 1 ta | 2-kun: 2 ta + Kran kamera"},
+}
+
+def load_json(path):
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
-    if filename == PRICES_FILE:
-        default = {
-            "p1": {"name": "1️⃣ Paket — 700,000 so'm",    "price": "700,000 so'm",    "desc": "1-kun: 1 ta kamera"},
-            "p2": {"name": "2️⃣ Paket — 1,400,000 so'm",  "price": "1,400,000 so'm",  "desc": "1-kun: 1 ta | 2-kun: 1 ta kamera"},
-            "p3": {"name": "3️⃣ Paket — 2,000,000 so'm",  "price": "2,000,000 so'm",  "desc": "1-kun: 1 ta | 2-kun: 2 ta kamera"},
-            "p4": {"name": "4️⃣ VIP Paket — 300$",         "price": "300$",             "desc": "1-kun: 1 ta | 2-kun: 2 ta kamera + Kran"},
-        }
-        save_json(PRICES_FILE, default)
-        return default
+    if path == PRICES_FILE:
+        save_json(path, DEFAULT_PRICES)
+        return dict(DEFAULT_PRICES)
     return []
 
-def save_json(filename, data):
-    with open(filename, "w", encoding="utf-8") as f:
+def save_json(path, data):
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-def add_user(user_id, name, lang="uz"):
-    if user_id == ADMIN_ID:
+def register_user(uid, name, lang):
+    if uid == ADMIN_ID:
         return
     users = load_json(USERS_FILE)
-    existing = next((u for u in users if u["id"] == user_id), None)
-    if existing:
-        existing["lang"] = lang
+    found = next((u for u in users if u["id"] == uid), None)
+    if found:
+        found["lang"] = lang
+        found["name"] = name
     else:
-        users.append({"id": user_id, "name": name, "lang": lang})
+        users.append({"id": uid, "name": name, "lang": lang})
     save_json(USERS_FILE, users)
 
-def get_lang(context):
-    return context.user_data.get("lang", "uz")
+def get_saved_lang(uid):
+    """Foydalanuvchi avval tanlagan tilini qaytaradi"""
+    users = load_json(USERS_FILE)
+    found = next((u for u in users if u["id"] == uid), None)
+    return found["lang"] if found and "lang" in found else None
 
-# ===================== START — TIL TANLASH =====================
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    context.user_data.clear()
+def get_lang(ctx):
+    return ctx.user_data.get("lang", "uz")
 
-    if user.id == ADMIN_ID:
-        kb = ReplyKeyboardMarkup(
-            [["📋 Zakazlar", "✏️ Narxlarni tahrirlash"],
-             ["💬 Chat", "📤 Broadcast"]],
-            resize_keyboard=True
-        )
-        await update.message.reply_text("👨‍💼 Admin panel.", reply_markup=kb)
-        return ADMIN_MAIN
+def lang_keyboard():
+    """Til tanlash inline tugmalari — 4 ta til"""
+    return InlineKeyboardMarkup([[
+        InlineKeyboardButton("🇺🇿 Lotin",   callback_data="lang:uz"),
+        InlineKeyboardButton("🇺🇿 Кирилл", callback_data="lang:uz_cyr"),
+    ],[
+        InlineKeyboardButton("🇷🇺 Русский", callback_data="lang:ru"),
+        InlineKeyboardButton("🇬🇧 English", callback_data="lang:en"),
+    ]])
 
-    kb = InlineKeyboardMarkup([
+def main_keyboard(lang):
+    """Asosiy tugmalar — til bo'yicha"""
+    return ReplyKeyboardMarkup(
         [
-            InlineKeyboardButton("🇺🇿 O'zbek",   callback_data="lang_uz"),
-            InlineKeyboardButton("🇷🇺 Русский",  callback_data="lang_ru"),
-            InlineKeyboardButton("🇬🇧 English",  callback_data="lang_en"),
-        ]
-    ])
-    await update.message.reply_text(
-        "🌐 Tilni tanlang / Выберите язык / Choose language:",
-        reply_markup=kb
-    )
-    return LANG_SELECT
-
-async def lang_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    await q.answer()
-    lang = q.data.replace("lang_", "")
-    context.user_data["lang"] = lang
-
-    user = update.effective_user
-    add_user(user.id, user.full_name, lang)
-
-    kb = ReplyKeyboardMarkup(
-        [
-            [KeyboardButton(tr(lang, "send_contact"), request_contact=True)],
-            [KeyboardButton(tr(lang, "contact_admin"))],
+            [KeyboardButton(t(lang, "btn_contact"), request_contact=True)],
+            [KeyboardButton(t(lang, "btn_call_admin"))],
+            [KeyboardButton(t(lang, "btn_change_lang"))],
         ],
         resize_keyboard=True
     )
-    await q.edit_message_text(
-        tr(lang, "welcome"),
-        parse_mode="Markdown"
-    )
-    await q.message.reply_text("👇", reply_markup=kb)
-    return CONTACT
 
-# ===================== MIJOZ FLOW =====================
-async def contact_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    lang = get_lang(context)
+
+# ╔══════════════════════════════════════╗
+# ║              /START                  ║
+# ╚══════════════════════════════════════╝
+async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    ctx.user_data.clear()
     user = update.effective_user
-    uname = user.username or "username yoq"
 
-    await context.bot.send_message(
-        ADMIN_ID,
-        tr("uz", "new_contact", name=user.full_name, uid=user.id, username=uname),
-        parse_mode="Markdown"
-    )
-    await update.message.reply_text(tr(lang, "admin_notified"), parse_mode="Markdown")
-    return CONTACT
+    if user.id == ADMIN_ID:
+        kb = ReplyKeyboardMarkup(
+            [
+                ["📋 Zakazlar",       "✏️ Narxlarni tahrirlash"],
+                ["💬 Mijozga yozish", "📤 Broadcast"],
+            ],
+            resize_keyboard=True
+        )
+        await update.message.reply_text(
+            "👨‍💼 *Admin panelga xush kelibsiz!*\n\n"
+            "Quyidagi tugmalardan birini tanlang 👇",
+            parse_mode="Markdown",
+            reply_markup=kb
+        )
+        return ADMIN_HOME
 
-async def contact_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    lang = get_lang(context)
-    context.user_data["name"]  = update.message.contact.first_name
-    context.user_data["phone"] = update.message.contact.phone_number
+    # Oldin tanlagan tili bormi?
+    saved_lang = get_saved_lang(user.id)
+    if saved_lang:
+        ctx.user_data["lang"] = saved_lang
+        flag = TEXTS.get(saved_lang, {}).get("flag", saved_lang)
+        await update.message.reply_text(
+            f"👋 Xush kelibsiz!\n\n"
+            f"🌐 Joriy til: *{flag}*\n\n"
+            f"Tilni o'zgartirish uchun quyidagi tugmani bosing 👇",
+            parse_mode="Markdown",
+            reply_markup=main_keyboard(saved_lang)
+        )
+        return CONTACT
 
-    prices = load_json(PRICES_FILE)
-    buttons = []
-    for k, v in prices.items():
-        label = f"{v['name']}\n📹 {v.get('desc','')}"
-        buttons.append([InlineKeyboardButton(label, callback_data=k)])
-
+    # Yangi foydalanuvchi — til tanlash
     await update.message.reply_text(
-        tr(lang, "choose_package"),
+        "🌐 *Tilni tanlang*\n"
+        "Выберите язык\n"
+        "Choose your language\n"
+        "Тилни танланг (Кирилл)",
         parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup(buttons)
+        reply_markup=lang_keyboard()
     )
-    return PACKAGE_SELECT
+    return LANG_SELECT
 
-async def package_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+# ╔══════════════════════════════════════╗
+# ║           TIL TANLASH                ║
+# ╚══════════════════════════════════════╝
+async def cb_lang(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
-    lang = get_lang(context)
+    lang = q.data.split(":")[1]
+    ctx.user_data["lang"] = lang
+    user = q.from_user
+    register_user(user.id, user.full_name, lang)
+
+    await q.edit_message_text(
+        t(lang, "welcome"),
+        parse_mode="Markdown"
+    )
+    await q.message.reply_text("👇", reply_markup=main_keyboard(lang))
+    return CONTACT
+
+async def msg_change_lang(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """Tilni o'zgartirish tugmasi bosilganda"""
+    await update.message.reply_text(
+        "🌐 *Yangi tilni tanlang:*\n"
+        "Выберите новый язык:\n"
+        "Choose new language:\n"
+        "Янги тилни танланг:",
+        parse_mode="Markdown",
+        reply_markup=lang_keyboard()
+    )
+    return LANG_SELECT
+
+
+# ╔══════════════════════════════════════╗
+# ║        ADMIN BILAN BOG'LANISH        ║
+# ╚══════════════════════════════════════╝
+async def msg_call_admin(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    lang = get_lang(ctx)
+    user = update.effective_user
+    uname = f"@{user.username}" if user.username else "username yo'q"
+
+    await ctx.bot.send_message(
+        ADMIN_ID,
+        f"📞 *YANGI MUROJAAT!*\n\n"
+        f"👤 Ism:      {user.full_name}\n"
+        f"🆔 ID:       `{user.id}`\n"
+        f"📲 Telegram: {uname}\n"
+        f"🌐 Til:      {TEXTS.get(lang,{}).get('flag', lang)}\n\n"
+        f"💬 Javob berish uchun:\n"
+        f"`/reply_{user.id} <xabaringiz>`",
+        parse_mode="Markdown"
+    )
+    await update.message.reply_text(
+        t(lang, "call_admin_sent"),
+        parse_mode="Markdown"
+    )
+    return CONTACT
+
+
+# ╔══════════════════════════════════════╗
+# ║         KONTAKT → PAKET              ║
+# ╚══════════════════════════════════════╝
+async def msg_contact(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    lang = get_lang(ctx)
+    contact = update.message.contact
+    ctx.user_data["name"]  = contact.first_name or update.effective_user.full_name
+    ctx.user_data["phone"] = contact.phone_number
+
     prices = load_json(PRICES_FILE)
-    pkg = prices[q.data]
-    context.user_data["package"] = f"{pkg['name']} ({pkg.get('desc','')})"
+    btns = []
+    for key, p in prices.items():
+        btns.append([InlineKeyboardButton(
+            f"{p['label']}\n📹 {p.get('desc','')}",
+            callback_data=f"pkg:{key}"
+        )])
+
+    await update.message.reply_text(
+        t(lang, "contact_sent"),
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(btns)
+    )
+    return PKG_SELECT
+
+
+# ╔══════════════════════════════════════╗
+# ║         PAKET TANLASH                ║
+# ╚══════════════════════════════════════╝
+async def cb_pkg(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+    lang = get_lang(ctx)
+    key  = q.data.split(":")[1]
+    prices = load_json(PRICES_FILE)
+    p = prices[key]
+    ctx.user_data["package"] = f"{p['label']} | {p.get('desc','')}"
+
     await q.edit_message_reply_markup(reply_markup=None)
     await q.message.reply_text(
-        tr(lang, "chosen", name=pkg["name"], price=pkg["price"]),
+        t(lang, "pkg_chosen", pkg=f"{p['label']}\n📹 {p.get('desc','')}"),
         parse_mode="Markdown"
     )
     return DATE_INPUT
 
-async def date_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    lang = get_lang(context)
-    context.user_data["date"] = update.message.text
-    events = tr(lang, "events")
-    kb = ReplyKeyboardMarkup([[KeyboardButton(e)] for e in events], resize_keyboard=True, one_time_keyboard=True)
-    await update.message.reply_text(tr(lang, "choose_event"), parse_mode="Markdown", reply_markup=kb)
-    return EVENT_TYPE
 
-async def event_type_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    lang = get_lang(context)
-    context.user_data["event"] = update.message.text
+# ╔══════════════════════════════════════╗
+# ║           SANA KIRITISH              ║
+# ╚══════════════════════════════════════╝
+async def msg_date(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    lang = get_lang(ctx)
+    ctx.user_data["date"] = update.message.text.strip()
+    events = t(lang, "events")
     kb = ReplyKeyboardMarkup(
-        [[KeyboardButton(tr(lang, "loc_btn"), request_location=True)]],
+        [[KeyboardButton(e)] for e in events],
+        resize_keyboard=True, one_time_keyboard=True
+    )
+    await update.message.reply_text(
+        t(lang, "ask_event", date=ctx.user_data["date"]),
+        parse_mode="Markdown", reply_markup=kb
+    )
+    return EVENT_SELECT
+
+
+# ╔══════════════════════════════════════╗
+# ║         TADBIR TURI                  ║
+# ╚══════════════════════════════════════╝
+async def msg_event(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    lang = get_lang(ctx)
+    ctx.user_data["event"] = update.message.text
+    kb = ReplyKeyboardMarkup(
+        [[KeyboardButton(t(lang, "btn_location"), request_location=True)]],
         resize_keyboard=True
     )
-    await update.message.reply_text(tr(lang, "send_location"), parse_mode="Markdown", reply_markup=kb)
-    return LOCATION
-
-async def location_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    lang = get_lang(context)
-    loc = update.message.location
-    context.user_data["lat"] = loc.latitude
-    context.user_data["lon"] = loc.longitude
     await update.message.reply_text(
-        tr(lang, "enter_address"),
+        t(lang, "ask_location", event=update.message.text),
+        parse_mode="Markdown", reply_markup=kb
+    )
+    return LOCATION_INPUT
+
+
+# ╔══════════════════════════════════════╗
+# ║           LOKATSIYA                  ║
+# ╚══════════════════════════════════════╝
+async def msg_location(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    lang = get_lang(ctx)
+    loc = update.message.location
+    ctx.user_data["lat"] = loc.latitude
+    ctx.user_data["lon"] = loc.longitude
+    await update.message.reply_text(
+        t(lang, "ask_address"),
         parse_mode="Markdown",
         reply_markup=ReplyKeyboardRemove()
     )
     return ADDRESS_INPUT
 
-async def address_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    lang = get_lang(context)
-    u = context.user_data
+
+# ╔══════════════════════════════════════╗
+# ║        MANZIL → ZAKAZ TAYYOR         ║
+# ╚══════════════════════════════════════╝
+async def msg_address(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    lang    = get_lang(ctx)
+    d       = ctx.user_data
+    address = update.message.text
+
     order = {
-        "user_id":  update.effective_user.id,
-        "name":     u["name"],
-        "phone":    u["phone"],
-        "package":  u["package"],
-        "date":     u["date"],
-        "event":    u["event"],
-        "address":  update.message.text,
-        "lat":      u["lat"],
-        "lon":      u["lon"],
-        "lang":     lang,
+        "user_id": update.effective_user.id,
+        "lang":    lang,
+        "name":    d["name"],  "phone":   d["phone"],
+        "package": d["package"], "date":  d["date"],
+        "event":   d["event"], "address": address,
+        "lat":     d["lat"],   "lon":     d["lon"],
     }
     orders = load_json(ORDERS_FILE)
     orders.append(order)
     save_json(ORDERS_FILE, orders)
 
-    await context.bot.send_message(
+    flag = TEXTS.get(lang, {}).get("flag", lang)
+    await ctx.bot.send_message(
         ADMIN_ID,
-        f"🔔 *YANGI ZAKAZ!*\n\n"
-        f"👤 {order['name']}\n"
-        f"📱 `{order['phone']}`\n"
-        f"🎉 {order['event']}\n"
-        f"📦 {order['package']}\n"
-        f"📅 {order['date']}\n"
-        f"🏠 {order['address']}\n"
-        f"🌐 Til: {lang.upper()}\n\n"
+        f"🔔 *YANGI ZAKAZ KELDI!*\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"👤 Ism:     {order['name']}\n"
+        f"📱 Tel:     `{order['phone']}`\n"
+        f"📦 Paket:   {order['package']}\n"
+        f"📅 Sana:    {order['date']}\n"
+        f"🎊 Tadbir:  {order['event']}\n"
+        f"🏠 Manzil:  {order['address']}\n"
+        f"🌐 Til:     {flag}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"📍 Lokatsiya quyida 👇",
         parse_mode="Markdown"
     )
-    await context.bot.send_location(ADMIN_ID, latitude=order["lat"], longitude=order["lon"])
-    await update.message.reply_text(tr(lang, "order_done"), parse_mode="Markdown")
-    return ConversationHandler.END
-
-# ===================== ADMIN PANEL =====================
-async def handle_admin_zakaz(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    orders = load_json(ORDERS_FILE)
-    if not orders:
-        await update.message.reply_text("📭 Hozircha zakazlar yo'q.")
-        return ADMIN_MAIN
-    buttons = []
-    for i, o in enumerate(orders):
-        label = f"#{i+1} | {o['event']} | {o['date']} | {o['name']}"
-        buttons.append([InlineKeyboardButton(label, callback_data=f"order_{i}")])
-    await update.message.reply_text("📋 *Zakazlar:*", parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
-    return ADMIN_MAIN
-
-async def view_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    await q.answer()
-    i = int(q.data.split("_")[1])
-    orders = load_json(ORDERS_FILE)
-    if i >= len(orders):
-        await q.edit_message_text("❌ Zakaz topilmadi.")
-        return ADMIN_MAIN
-    o = orders[i]
-    await context.bot.send_location(update.effective_chat.id, latitude=o["lat"], longitude=o["lon"])
-    text = (
-        f"📋 *Zakaz #{i+1}*\n\n"
-        f"👤 {o['name']}\n"
-        f"📱 `{o['phone']}`\n"
-        f"🎉 {o['event']}\n"
-        f"📦 {o['package']}\n"
-        f"📅 {o['date']}\n"
-        f"🏠 {o['address']}"
-    )
-    kb = InlineKeyboardMarkup([[InlineKeyboardButton("🗑 O'chirish", callback_data=f"delete_{i}")]])
-    await context.bot.send_message(update.effective_chat.id, text, parse_mode="Markdown", reply_markup=kb)
-    return ADMIN_MAIN
-
-async def delete_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    await q.answer()
-    i = int(q.data.split("_")[1])
-    orders = load_json(ORDERS_FILE)
-    if i < len(orders):
-        orders.pop(i)
-        save_json(ORDERS_FILE, orders)
-        await q.edit_message_text("✅ Zakaz o'chirildi.")
-    return ADMIN_MAIN
-
-async def handle_admin_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    prices = load_json(PRICES_FILE)
-    buttons = [[InlineKeyboardButton(f"{v['name']}", callback_data=f"price_{k}")] for k, v in prices.items()]
-    await update.message.reply_text("✏️ *Qaysi paketni tahrirlaysiz?*", parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
-    return EDIT_PRICE_SELECT
-
-async def edit_price_select(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    await q.answer()
-    key = q.data.replace("price_", "")
-    context.user_data["edit_key"] = key
-    prices = load_json(PRICES_FILE)
-    pkg = prices[key]
-    await q.edit_message_text(
-        f"✏️ *{pkg['name']}*\n\n"
-        f"Joriy narx: {pkg['price']}\n"
-        f"Joriy tavsif: {pkg.get('desc','')}\n\n"
-        "Yangi ma'lumot yuboring:\n`narx | tavsif`\n\n"
-        "Misol: `900,000 so'm | 1 kun, 1 ta kamera`",
+    await ctx.bot.send_location(ADMIN_ID, latitude=order["lat"], longitude=order["lon"])
+    await update.message.reply_text(
+        t(lang, "order_done",
+          name=order["name"], phone=order["phone"],
+          pkg=order["package"], date=order["date"],
+          event=order["event"], address=address),
         parse_mode="Markdown"
     )
-    return EDIT_PRICE_VALUE
+    return ConversationHandler.END
 
-async def edit_price_value(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.strip()
-    key  = context.user_data.get("edit_key")
+
+# ╔══════════════════════════════════════╗
+# ║           ADMIN — ZAKAZLAR           ║
+# ╚══════════════════════════════════════╝
+async def admin_orders(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    orders = load_json(ORDERS_FILE)
+    if not orders:
+        await update.message.reply_text(
+            "📭 *Hozircha zakazlar yo'q.*\n\n"
+            "Mijozlar zakaz qilganda shu yerda ko'rinadi.",
+            parse_mode="Markdown"
+        )
+        return ADMIN_HOME
+    btns = []
+    for i, o in enumerate(orders):
+        btns.append([InlineKeyboardButton(
+            f"#{i+1} | {o['event']} | {o['date']} | {o['name']}",
+            callback_data=f"order:{i}"
+        )])
+    await update.message.reply_text(
+        f"📋 *Zakazlar ro'yxati*\n\nJami: *{len(orders)} ta zakaz*\n\n"
+        f"Ko'rish uchun zakazni tanlang 👇",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(btns)
+    )
+    return ADMIN_HOME
+
+async def cb_view_order(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+    i = int(q.data.split(":")[1])
+    orders = load_json(ORDERS_FILE)
+    if i >= len(orders):
+        await q.edit_message_text("❌ Bu zakaz topilmadi.")
+        return ADMIN_HOME
+    o = orders[i]
+    flag = TEXTS.get(o.get("lang","uz"), {}).get("flag", o.get("lang","?"))
+    await ctx.bot.send_location(update.effective_chat.id, latitude=o["lat"], longitude=o["lon"])
+    kb = InlineKeyboardMarkup([[
+        InlineKeyboardButton("🗑 Zakazni o'chirish", callback_data=f"del:{i}")
+    ]])
+    await ctx.bot.send_message(
+        update.effective_chat.id,
+        f"📋 *Zakaz #{i+1} — Batafsil*\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"👤 Ism:     {o['name']}\n"
+        f"📱 Tel:     `{o['phone']}`\n"
+        f"📦 Paket:   {o['package']}\n"
+        f"📅 Sana:    {o['date']}\n"
+        f"🎊 Tadbir:  {o['event']}\n"
+        f"🏠 Manzil:  {o['address']}\n"
+        f"🌐 Til:     {flag}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━",
+        parse_mode="Markdown", reply_markup=kb
+    )
+    return ADMIN_HOME
+
+async def cb_delete_order(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+    i = int(q.data.split(":")[1])
+    orders = load_json(ORDERS_FILE)
+    if i < len(orders):
+        name = orders[i]["name"]
+        orders.pop(i)
+        save_json(ORDERS_FILE, orders)
+        await q.edit_message_text(f"✅ *{name}* ning zakazi o'chirildi.", parse_mode="Markdown")
+    return ADMIN_HOME
+
+
+# ╔══════════════════════════════════════╗
+# ║        ADMIN — NARX TAHRIRLASH       ║
+# ╚══════════════════════════════════════╝
+async def admin_prices(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    prices = load_json(PRICES_FILE)
+    btns = [[InlineKeyboardButton(p["label"], callback_data=f"epkg:{k}")] for k, p in prices.items()]
+    await update.message.reply_text(
+        "✏️ *Narxlarni tahrirlash*\n\n"
+        "Qaysi paketni o'zgartirmoqchisiz?\n"
+        "Pastdagi tugmalardan birini tanlang 👇",
+        parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(btns)
+    )
+    return EDIT_PKG_SELECT
+
+async def cb_edit_pkg_select(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+    key = q.data.split(":")[1]
+    ctx.user_data["edit_key"] = key
+    prices = load_json(PRICES_FILE)
+    p = prices[key]
+    await q.edit_message_text(
+        f"✏️ *{p['label']}* — tahrirlash\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"💰 Joriy narx:   {p['price']}\n"
+        f"📝 Joriy tavsif: {p.get('desc','')}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"Yangi ma'lumot yuboring:\n`yangi narx | yangi tavsif`\n\n"
+        f"📌 Misol:\n`800 000 so'm | 1 kun, 1 ta kamera`",
+        parse_mode="Markdown"
+    )
+    return EDIT_PKG_VALUE
+
+async def msg_edit_pkg_value(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    text   = update.message.text.strip()
+    key    = ctx.user_data.get("edit_key")
     prices = load_json(PRICES_FILE)
     if "|" in text:
         parts = text.split("|", 1)
@@ -364,168 +812,201 @@ async def edit_price_value(update: Update, context: ContextTypes.DEFAULT_TYPE):
         prices[key]["price"] = text
     save_json(PRICES_FILE, prices)
     await update.message.reply_text(
-        f"✅ *{prices[key]['name']}* yangilandi!\n"
-        f"💰 {prices[key]['price']}\n"
-        f"📝 {prices[key].get('desc','')}",
+        f"✅ *{prices[key]['label']}* yangilandi!\n\n"
+        f"💰 Narx:   {prices[key]['price']}\n"
+        f"📝 Tavsif: {prices[key].get('desc','')}",
         parse_mode="Markdown"
     )
-    return ADMIN_MAIN
+    return ADMIN_HOME
 
-async def handle_admin_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+# ╔══════════════════════════════════════╗
+# ║        ADMIN — MIJOZGA YOZISH        ║
+# ╚══════════════════════════════════════╝
+async def admin_chat(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     users = load_json(USERS_FILE)
     users = [u for u in users if u["id"] != ADMIN_ID]
     if not users:
-        await update.message.reply_text("👥 Hozircha foydalanuvchilar yo'q.")
-        return ADMIN_MAIN
-    buttons = [[InlineKeyboardButton(u["name"], callback_data=f"chat_{u['id']}")] for u in users]
-    await update.message.reply_text("💬 *Kimga xabar?*", parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
-    return ADMIN_CHAT_SELECT
+        await update.message.reply_text(
+            "👥 *Hozircha ro'yxatda foydalanuvchi yo'q.*\n\n"
+            "Biror kishi /start bosganidan keyin bu yerda ko'rinadi.",
+            parse_mode="Markdown"
+        )
+        return ADMIN_HOME
+    btns = [[InlineKeyboardButton(
+        f"👤 {u['name']} | {TEXTS.get(u.get('lang','uz'),{}).get('flag','?')}",
+        callback_data=f"chat:{u['id']}"
+    )] for u in users]
+    await update.message.reply_text(
+        f"💬 *Mijozga xabar yuborish*\n\n"
+        f"Ro'yxatda *{len(users)} ta foydalanuvchi* bor.\n"
+        f"Kimga yozmoqchisiz? 👇",
+        parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(btns)
+    )
+    return CHAT_USER_SELECT
 
-async def admin_chat_select(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def cb_chat_select(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
-    context.user_data["chat_target"] = int(q.data.split("_")[1])
-    await q.edit_message_text("✍️ Xabaringizni yozing:")
-    return ADMIN_CHATTING
-
-async def admin_send_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    target_id = context.user_data.get("chat_target")
-    if target_id:
-        try:
-            await context.bot.send_message(target_id, f"📩 *Admin xabari:*\n\n{update.message.text}", parse_mode="Markdown")
-            await update.message.reply_text("✅ Xabar yuborildi!")
-        except Exception as e:
-            await update.message.reply_text(f"❌ Yuborib bo'lmadi: {e}")
-    return ADMIN_MAIN
-
-# ===================== BROADCAST =====================
-async def handle_broadcast_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    users = load_json(USERS_FILE)
-    users = [u for u in users if u["id"] != ADMIN_ID]
-    count = len(users)
-    await update.message.reply_text(
-        f"📤 *Ommaviy xabar yuborish*\n\n"
-        f"👥 Jami foydalanuvchilar: *{count} ta*\n\n"
-        f"Xabaringizni yozing (matn, rasm yoki video yuborishingiz mumkin):\n\n"
-        f"Bekor qilish: /cancel",
+    ctx.user_data["chat_target"] = int(q.data.split(":")[1])
+    await q.edit_message_text(
+        "✍️ *Xabaringizni yozing:*\n\n"
+        "Matn, rasm yoki video yuborishingiz mumkin.",
         parse_mode="Markdown"
     )
-    return BROADCAST_INPUT
+    return CHAT_SEND
 
-async def handle_broadcast_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    users = load_json(USERS_FILE)
-    users = [u for u in users if u["id"] != ADMIN_ID]
+async def msg_chat_send(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    target = ctx.user_data.get("chat_target")
+    if not target:
+        return ADMIN_HOME
+    try:
+        if update.message.photo:
+            await ctx.bot.send_photo(target, update.message.photo[-1].file_id,
+                caption=f"📩 *Admin xabari:*\n\n{update.message.caption or ''}", parse_mode="Markdown")
+        elif update.message.video:
+            await ctx.bot.send_video(target, update.message.video.file_id,
+                caption=f"📩 *Admin xabari:*\n\n{update.message.caption or ''}", parse_mode="Markdown")
+        else:
+            await ctx.bot.send_message(target, f"📩 *Admin xabari:*\n\n{update.message.text}", parse_mode="Markdown")
+        await update.message.reply_text("✅ *Xabar yuborildi!*", parse_mode="Markdown")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Yuborib bo'lmadi: {e}")
+    return ADMIN_HOME
 
-    sent = 0
-    failed = 0
 
-    status_msg = await update.message.reply_text(f"⏳ Yuborilmoqda... 0/{len(users)}")
+# ╔══════════════════════════════════════╗
+# ║            BROADCAST                 ║
+# ╚══════════════════════════════════════╝
+async def admin_broadcast_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    users = [u for u in load_json(USERS_FILE) if u["id"] != ADMIN_ID]
+    await update.message.reply_text(
+        f"📤 *Ommaviy xabar yuborish*\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"👥 Jami foydalanuvchilar: *{len(users)} ta*\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"📝 Xabaringizni yozing yoki rasm/video yuboring.\n"
+        f"Barcha foydalanuvchilarga bir vaqtda ketadi.\n\n"
+        f"❌ Bekor qilish: /cancel",
+        parse_mode="Markdown"
+    )
+    return BROADCAST_WAIT
 
-    for i, user in enumerate(users):
+async def admin_broadcast_send(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    users = [u for u in load_json(USERS_FILE) if u["id"] != ADMIN_ID]
+    total = len(users)
+    prog  = await update.message.reply_text(f"⏳ *Yuborilmoqda...* 0 / {total}", parse_mode="Markdown")
+    sent = failed = 0
+    for i, u in enumerate(users, 1):
         try:
             if update.message.photo:
-                await context.bot.send_photo(
-                    user["id"],
-                    update.message.photo[-1].file_id,
-                    caption=update.message.caption or "",
-                    parse_mode="Markdown"
-                )
+                await ctx.bot.send_photo(u["id"], update.message.photo[-1].file_id,
+                    caption=update.message.caption or "", parse_mode="Markdown")
             elif update.message.video:
-                await context.bot.send_video(
-                    user["id"],
-                    update.message.video.file_id,
-                    caption=update.message.caption or "",
-                    parse_mode="Markdown"
-                )
+                await ctx.bot.send_video(u["id"], update.message.video.file_id,
+                    caption=update.message.caption or "", parse_mode="Markdown")
             else:
-                await context.bot.send_message(
-                    user["id"],
-                    update.message.text,
-                    parse_mode="Markdown"
-                )
+                await ctx.bot.send_message(u["id"], update.message.text, parse_mode="Markdown")
             sent += 1
         except Exception:
             failed += 1
-
-        if (i + 1) % 5 == 0 or (i + 1) == len(users):
+        if i % 5 == 0 or i == total:
             try:
-                await status_msg.edit_text(f"⏳ Yuborilmoqda... {i+1}/{len(users)}")
+                await prog.edit_text(f"⏳ *Yuborilmoqda...* {i} / {total}", parse_mode="Markdown")
             except Exception:
                 pass
-
-    await status_msg.edit_text(
-        f"✅ *Broadcast tugadi!*\n\n"
-        f"✔️ Yuborildi: {sent} ta\n"
-        f"❌ Yuborilmadi: {failed} ta",
+    await prog.edit_text(
+        f"✅ *Broadcast yakunlandi!*\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"✔️ Muvaffaqiyatli: *{sent} ta*\n"
+        f"❌ Yuborilmadi:    *{failed} ta*\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━",
         parse_mode="Markdown"
     )
-    return ADMIN_MAIN
+    return ADMIN_HOME
 
-async def cancel_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def cmd_cancel(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id == ADMIN_ID:
-        await update.message.reply_text("❌ Bekor qilindi.")
-        return ADMIN_MAIN
+        await update.message.reply_text("❌ *Bekor qilindi.*", parse_mode="Markdown")
+        return ADMIN_HOME
     return ConversationHandler.END
 
-# ===================== MAIN =====================
+
+# ╔══════════════════════════════════════╗
+# ║          /reply_ID KOMANDA           ║
+# ╚══════════════════════════════════════╝
+async def handle_reply(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != ADMIN_ID:
+        return
+    text = update.message.text
+    try:
+        parts   = text.split(" ", 1)
+        user_id = int(parts[0].replace("/reply_", ""))
+        msg     = parts[1] if len(parts) > 1 else ""
+        if not msg:
+            await update.message.reply_text("Misol: `/reply_123456 Salom!`", parse_mode="Markdown")
+            return
+        await ctx.bot.send_message(user_id, f"📩 *Admin javobi:*\n\n{msg}", parse_mode="Markdown")
+        await update.message.reply_text("✅ Yuborildi!")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Xato: {e}")
+
+
+# ╔══════════════════════════════════════╗
+# ║               MAIN                   ║
+# ╚══════════════════════════════════════╝
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
-
-    async def handle_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        if update.effective_user.id != ADMIN_ID:
-            return
-        text = update.message.text
-        try:
-            parts = text.split(" ", 1)
-            user_id = int(parts[0].replace("/reply_", ""))
-            message = parts[1] if len(parts) > 1 else ""
-            if not message:
-                await update.message.reply_text("Misol: /reply_123456 Salom!")
-                return
-            await context.bot.send_message(user_id, f"📩 *Admin javobi:*\n\n{message}", parse_mode="Markdown")
-            await update.message.reply_text("✅ Yuborildi!")
-        except Exception as e:
-            await update.message.reply_text(f"❌ Xato: {e}")
-
     app.add_handler(MessageHandler(filters.Regex(r"^/reply_\d+"), handle_reply))
 
     conv = ConversationHandler(
-        entry_points=[CommandHandler("start", start)],
+        entry_points=[CommandHandler("start", cmd_start)],
         states={
             LANG_SELECT: [
-                CallbackQueryHandler(lang_selected, pattern="^lang_"),
+                CallbackQueryHandler(cb_lang, pattern="^lang:"),
             ],
             CONTACT: [
-                MessageHandler(filters.CONTACT, contact_received),
-                MessageHandler(filters.Regex("Admin bilan|администратором|admin"), contact_admin),
+                MessageHandler(filters.CONTACT, msg_contact),
+                MessageHandler(filters.Regex("Admin|admin|Админ|администр|боғланиш|Bog'lanish"), msg_call_admin),
+                MessageHandler(filters.Regex("Tilni|Тилни|language|язык|Change|Смен"), msg_change_lang),
+                CallbackQueryHandler(cb_lang, pattern="^lang:"),
             ],
-            ADMIN_MAIN: [
-                MessageHandler(filters.Regex("Zakazlar"),           handle_admin_zakaz),
-                MessageHandler(filters.Regex("Narxlarni"),          handle_admin_price),
-                MessageHandler(filters.Regex("^💬 Chat$"),           handle_admin_chat),
-                MessageHandler(filters.Regex("Broadcast"),          handle_broadcast_start),
-                CallbackQueryHandler(view_order,    pattern="^order_"),
-                CallbackQueryHandler(delete_order,  pattern="^delete_"),
+            PKG_SELECT:       [CallbackQueryHandler(cb_pkg, pattern="^pkg:")],
+            DATE_INPUT:       [MessageHandler(filters.TEXT & ~filters.COMMAND, msg_date)],
+            EVENT_SELECT:     [MessageHandler(filters.TEXT & ~filters.COMMAND, msg_event)],
+            LOCATION_INPUT:   [MessageHandler(filters.LOCATION, msg_location)],
+            ADDRESS_INPUT:    [MessageHandler(filters.TEXT & ~filters.COMMAND, msg_address)],
+            ADMIN_HOME: [
+                MessageHandler(filters.Regex("Zakazlar"),       admin_orders),
+                MessageHandler(filters.Regex("Narxlarni"),      admin_prices),
+                MessageHandler(filters.Regex("Mijozga"),        admin_chat),
+                MessageHandler(filters.Regex("Broadcast"),      admin_broadcast_start),
+                CallbackQueryHandler(cb_view_order,   pattern="^order:"),
+                CallbackQueryHandler(cb_delete_order, pattern="^del:"),
             ],
-            PACKAGE_SELECT:    [CallbackQueryHandler(package_selected)],
-            DATE_INPUT:        [MessageHandler(filters.TEXT & ~filters.COMMAND, date_received)],
-            EVENT_TYPE:        [MessageHandler(filters.TEXT & ~filters.COMMAND, event_type_received)],
-            LOCATION:          [MessageHandler(filters.LOCATION, location_received)],
-            ADDRESS_INPUT:     [MessageHandler(filters.TEXT & ~filters.COMMAND, address_received)],
-            EDIT_PRICE_SELECT: [CallbackQueryHandler(edit_price_select, pattern="^price_")],
-            EDIT_PRICE_VALUE:  [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_price_value)],
-            ADMIN_CHAT_SELECT: [CallbackQueryHandler(admin_chat_select, pattern="^chat_")],
-            ADMIN_CHATTING:    [MessageHandler(filters.TEXT & ~filters.COMMAND, admin_send_message)],
-            BROADCAST_INPUT:   [
-                CommandHandler("cancel", cancel_broadcast),
-                MessageHandler(filters.TEXT | filters.PHOTO | filters.VIDEO, handle_broadcast_send),
+            EDIT_PKG_SELECT:  [CallbackQueryHandler(cb_edit_pkg_select, pattern="^epkg:")],
+            EDIT_PKG_VALUE:   [MessageHandler(filters.TEXT & ~filters.COMMAND, msg_edit_pkg_value)],
+            CHAT_USER_SELECT: [CallbackQueryHandler(cb_chat_select, pattern="^chat:")],
+            CHAT_SEND: [
+                MessageHandler(
+                    (filters.TEXT | filters.PHOTO | filters.VIDEO) & ~filters.COMMAND,
+                    msg_chat_send
+                )
+            ],
+            BROADCAST_WAIT: [
+                CommandHandler("cancel", cmd_cancel),
+                MessageHandler(
+                    (filters.TEXT | filters.PHOTO | filters.VIDEO) & ~filters.COMMAND,
+                    admin_broadcast_send
+                ),
             ],
         },
-        fallbacks=[CommandHandler("start", start)]
+        fallbacks=[CommandHandler("start", cmd_start), CommandHandler("cancel", cmd_cancel)],
     )
-
     app.add_handler(conv)
-    app.run_polling()
+    print("✅ Bot ishga tushdi...")
+    app.run_polling(drop_pending_updates=True)
+
 
 if __name__ == "__main__":
     main()
