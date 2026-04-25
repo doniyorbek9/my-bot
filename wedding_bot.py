@@ -522,10 +522,13 @@ async def cb_lang(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     user = q.from_user
     register_user(user.id, user.full_name, lang)
 
-    # Inline xabarni o'chiramiz
-    await q.delete_message()
+    # Inline xabarni yopamiz
+    try:
+        await q.edit_message_reply_markup(reply_markup=None)
+    except Exception:
+        pass
 
-    # Welcome + keyboard BITTA xabarda
+    # Welcome + keyboard BITTA xabarda — shu yerda CONTACT state boshlanadi
     await q.message.reply_text(
         tx(lang, "welcome"),
         parse_mode="Markdown",
@@ -601,6 +604,15 @@ async def msg_send_to_admin(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 # ╚══════════════════════════════════════╝
 async def msg_contact(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     lang = get_lang(ctx)
+    
+    # Kontakt tekshirish
+    if not update.message.contact:
+        await update.message.reply_text(
+            "⚠️ Iltimos quyidagi tugmani bosib telefon raqamingizni yuboring 👇",
+            reply_markup=main_kb(lang)
+        )
+        return CONTACT
+    
     contact = update.message.contact
     ctx.user_data["name"]  = contact.first_name or update.effective_user.full_name
     ctx.user_data["phone"] = contact.phone_number
@@ -1012,7 +1024,10 @@ def main():
     app.add_handler(MessageHandler(filters.Regex(r"^/reply_\d+"), handle_reply))
 
     conv = ConversationHandler(
-        entry_points=[CommandHandler("start", cmd_start)],
+        entry_points=[
+            CommandHandler("start", cmd_start),
+            MessageHandler(filters.CONTACT, msg_contact),
+        ],
         states={
             # Til tanlash
             LANG_SELECT: [
