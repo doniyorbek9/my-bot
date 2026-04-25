@@ -14,9 +14,6 @@ from telegram.ext import (
     filters, ContextTypes
 )
 
-# ╔══════════════════════════════════════╗
-# ║           BOT SOZLAMALARI            ║
-# ╚══════════════════════════════════════╝
 ADMIN_ID    = 7948989650
 BOT_TOKEN   = os.getenv("TOKEN")
 
@@ -41,9 +38,6 @@ USERS_FILE  = "users.json"
     BROADCAST_WAIT,
 ) = range(14)
 
-# ╔══════════════════════════════════════╗
-# ║         KO'P TILLIK MATNLAR          ║
-# ╚══════════════════════════════════════╝
 TEXTS = {
     "uz": {
         "flag":            "🇺🇿 O'zbek (Lotin)",
@@ -1026,7 +1020,6 @@ def main():
     conv = ConversationHandler(
         entry_points=[
             CommandHandler("start", cmd_start),
-            MessageHandler(filters.CONTACT, msg_contact),
         ],
         states={
             # Til tanlash
@@ -1084,7 +1077,7 @@ def main():
                 MessageHandler(
                     (filters.TEXT | filters.PHOTO | filters.VIDEO) & ~filters.COMMAND,
                     admin_broadcast_send
-                ),
+                )
             ],
         },
         fallbacks=[
