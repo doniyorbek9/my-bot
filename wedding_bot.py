@@ -3,7 +3,6 @@
 
 import json
 import os
-import re
 from telegram import (
     Update, ReplyKeyboardMarkup, KeyboardButton,
     InlineKeyboardMarkup, InlineKeyboardButton,
@@ -126,7 +125,6 @@ TEXTS = {
             "Rahmat! 🙏"
         ),
     },
-
     "uz_cyr": {
         "flag":            "🇺🇿 Ўзбек (Кирилл)",
         "welcome": (
@@ -213,7 +211,6 @@ TEXTS = {
             "Раҳмат! 🙏"
         ),
     },
-
     "ru": {
         "flag":            "🇷🇺 Русский",
         "welcome": (
@@ -300,7 +297,6 @@ TEXTS = {
             "Спасибо! 🙏"
         ),
     },
-
     "en": {
         "flag":            "🇬🇧 English",
         "welcome": (
@@ -395,9 +391,7 @@ def tx(lang, key, **kw):
     return text.format(**kw) if kw else text
 
 
-# ╔══════════════════════════════════════╗
-# ║           JSON YORDAMCHILAR          ║
-# ╚══════════════════════════════════════╝
+# ── JSON yordamchilar ────────────────────────────────────────────────────────
 DEFAULT_PRICES = {
     "p1": {"label": "1️⃣  Paket — 700 000 so'm",   "price": "700 000 so'm",   "desc": "1-kun: 1 ta kamera"},
     "p2": {"label": "2️⃣  Paket — 1 400 000 so'm", "price": "1 400 000 so'm", "desc": "2 kun: 1 ta kamera"},
@@ -445,8 +439,8 @@ def lang_kb():
             InlineKeyboardButton("🇺🇿 Ўзбек (Кирилл)", callback_data="lang:uz_cyr"),
         ],
         [
-            InlineKeyboardButton("🇷🇺 Русский",  callback_data="lang:ru"),
-            InlineKeyboardButton("🇬🇧 English",  callback_data="lang:en"),
+            InlineKeyboardButton("🇷🇺 Русский", callback_data="lang:ru"),
+            InlineKeyboardButton("🇬🇧 English", callback_data="lang:en"),
         ],
     ])
 
@@ -460,36 +454,22 @@ def main_kb(lang):
         resize_keyboard=True
     )
 
-# ╔══════════════════════════════════════╗
-# ║     TUGMA MATNI ANIQLASH (HELPER)    ║
-# ╚══════════════════════════════════════╝
-
-# Barcha tillardagi "admin" tugma matnlari
-ADMIN_BTN_TEXTS = [
-    "📞 Admin bilan bog'lanish",       # uz
-    "📞 Админ билан боғланиш",         # uz_cyr
-    "📞 Связаться с администратором",   # ru
-    "📞 Contact admin",                 # en
-]
-
-# Barcha tillardagi "til o'zgartirish" tugma matnlari
-LANG_BTN_TEXTS = [
-    "🌐 Tilni o'zgartirish",   # uz
-    "🌐 Тилни ўзгартириш",     # uz_cyr
-    "🌐 Сменить язык",          # ru
-    "🌐 Change language",        # en
-]
-
-def is_admin_btn(text: str) -> bool:
-    return text.strip() in ADMIN_BTN_TEXTS
-
-def is_lang_btn(text: str) -> bool:
-    return text.strip() in LANG_BTN_TEXTS
+# Barcha tillardagi tugma matnlari to'plami
+ADMIN_BTNS = {
+    "📞 Admin bilan bog'lanish",
+    "📞 Админ билан боғланиш",
+    "📞 Связаться с администратором",
+    "📞 Contact admin",
+}
+LANG_BTNS = {
+    "🌐 Tilni o'zgartirish",
+    "🌐 Тилни ўзгартириш",
+    "🌐 Сменить язык",
+    "🌐 Change language",
+}
 
 
-# ╔══════════════════════════════════════╗
-# ║              /START                  ║
-# ╚══════════════════════════════════════╝
+# ── /START ───────────────────────────────────────────────────────────────────
 async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     ctx.user_data.clear()
     user = update.effective_user
@@ -531,9 +511,7 @@ async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     return LANG_SELECT
 
 
-# ╔══════════════════════════════════════╗
-# ║           TIL TANLASH CB             ║
-# ╚══════════════════════════════════════╝
+# ── TIL TANLASH (inline callback) ────────────────────────────────────────────
 async def cb_lang(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
@@ -554,6 +532,8 @@ async def cb_lang(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     )
     return CONTACT
 
+
+# ── TIL O'ZGARTIRISH (tugmadan) ──────────────────────────────────────────────
 async def msg_change_lang(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🌐 *Yangi tilni tanlang:*\n"
@@ -566,9 +546,7 @@ async def msg_change_lang(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     return LANG_SELECT
 
 
-# ╔══════════════════════════════════════╗
-# ║     ADMIN BILAN BOG'LANISH           ║
-# ╚══════════════════════════════════════╝
+# ── ADMIN BILAN BOG'LANISH ───────────────────────────────────────────────────
 async def msg_ask_admin(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     lang = get_lang(ctx)
     await update.message.reply_text(
@@ -579,9 +557,8 @@ async def msg_ask_admin(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     return ADMIN_MSG_INPUT
 
 async def msg_send_to_admin(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    lang = get_lang(ctx)
-    user = update.effective_user
-    user_msg = update.message.text
+    lang  = get_lang(ctx)
+    user  = update.effective_user
     uname = f"@{user.username}" if user.username else "username yo'q"
     flag  = TEXTS.get(lang, {}).get("flag", lang)
 
@@ -594,9 +571,9 @@ async def msg_send_to_admin(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         f"📲 Telegram: {uname}\n"
         f"🌐 Til:      {flag}\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"💬 Xabar:\n{user_msg}\n"
+        f"💬 Xabar:\n{update.message.text}\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"📩 Javob berish uchun quyidagini bosing 👇",
+        f"📩 Javob berish uchun:",
         parse_mode="Markdown"
     )
     await ctx.bot.send_message(ADMIN_ID, f"/reply_{user.id}")
@@ -609,48 +586,52 @@ async def msg_send_to_admin(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     return CONTACT
 
 
-# ╔══════════════════════════════════════╗
-# ║         KONTAKT → PAKET              ║
-# ╚══════════════════════════════════════╝
+# ── KONTAKT QABUL QILISH ─────────────────────────────────────────────────────
+# MUHIM: filters.CONTACT va filters.TEXT ALOHIDA handler'larda bo'lishi shart!
+# Bitta handler'da birlashtirish — kontakt kelganda text=None bo'ladi,
+# shuning uchun tekshiruvlar noto'g'ri ishlaydi.
+
 async def msg_contact(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """Faqat filters.CONTACT triggeri uchun"""
+    lang    = get_lang(ctx)
+    contact = update.message.contact
+    user    = update.effective_user
+
+    # Foydalanuvchini ro'yxatdan o'tkazish
+    register_user(user.id, user.full_name, lang)
+
+    ctx.user_data["name"]  = contact.first_name or user.full_name
+    ctx.user_data["phone"] = contact.phone_number
+
+    prices = load_json(PRICES_FILE)
+    btns = [
+        [InlineKeyboardButton(
+            f"{p['label']}\n📹 {p.get('desc', '')}",
+            callback_data=f"pkg:{key}"
+        )]
+        for key, p in prices.items()
+    ]
+
+    await update.message.reply_text(
+        tx(lang, "contact_sent"),
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(btns)
+    )
+    return PKG_SELECT
+
+
+async def msg_contact_text(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """Faqat filters.TEXT triggeri uchun — CONTACT state'da matn kelganda"""
     lang = get_lang(ctx)
+    text = update.message.text.strip()
 
-    # ── Tugma matnlari kelganda (kontakt emas) ──────────────────────────────
-    if update.message.text:
-        text = update.message.text.strip()
-        if is_admin_btn(text):
-            return await msg_ask_admin(update, ctx)
-        if is_lang_btn(text):
-            return await msg_change_lang(update, ctx)
-        # Boshqa matn — eslatma
-        await update.message.reply_text(
-            "⚠️ Iltimos quyidagi tugmani bosib telefon raqamingizni yuboring 👇",
-            reply_markup=main_kb(lang)
-        )
-        return CONTACT
+    if text in ADMIN_BTNS:
+        return await msg_ask_admin(update, ctx)
 
-    # ── Kontakt keldi ────────────────────────────────────────────────────────
-    if update.message.contact:
-        contact = update.message.contact
-        ctx.user_data["name"]  = contact.first_name or update.effective_user.full_name
-        ctx.user_data["phone"] = contact.phone_number
+    if text in LANG_BTNS:
+        return await msg_change_lang(update, ctx)
 
-        prices = load_json(PRICES_FILE)
-        btns = []
-        for key, p in prices.items():
-            btns.append([InlineKeyboardButton(
-                f"{p['label']}\n📹 {p.get('desc', '')}",
-                callback_data=f"pkg:{key}"
-            )])
-
-        await update.message.reply_text(
-            tx(lang, "contact_sent"),
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(btns)
-        )
-        return PKG_SELECT
-
-    # ── Location yoki boshqa media keldi ────────────────────────────────────
+    # Boshqa har qanday matn — eslatma
     await update.message.reply_text(
         "⚠️ Iltimos quyidagi tugmani bosib telefon raqamingizni yuboring 👇",
         reply_markup=main_kb(lang)
@@ -658,19 +639,22 @@ async def msg_contact(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     return CONTACT
 
 
-# ╔══════════════════════════════════════╗
-# ║         PAKET TANLASH                ║
-# ╚══════════════════════════════════════╝
+# ── PAKET TANLASH ────────────────────────────────────────────────────────────
 async def cb_pkg(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
+    q    = update.callback_query
     await q.answer()
-    lang  = get_lang(ctx)
-    key   = q.data.split(":")[1]
+    lang = get_lang(ctx)
+    key  = q.data.split(":")[1]
+
     prices = load_json(PRICES_FILE)
-    p = prices[key]
+    p      = prices[key]
     ctx.user_data["package"] = f"{p['label']} | {p.get('desc', '')}"
 
-    await q.edit_message_reply_markup(reply_markup=None)
+    try:
+        await q.edit_message_reply_markup(reply_markup=None)
+    except Exception:
+        pass
+
     await q.message.reply_text(
         tx(lang, "pkg_chosen", pkg=f"{p['label']}\n📹 {p.get('desc', '')}"),
         parse_mode="Markdown"
@@ -678,12 +662,11 @@ async def cb_pkg(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     return DATE_INPUT
 
 
-# ╔══════════════════════════════════════╗
-# ║           SANA KIRITISH              ║
-# ╚══════════════════════════════════════╝
+# ── SANA ─────────────────────────────────────────────────────────────────────
 async def msg_date(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     lang = get_lang(ctx)
     ctx.user_data["date"] = update.message.text.strip()
+
     events = tx(lang, "events")
     kb = ReplyKeyboardMarkup(
         [[KeyboardButton(e)] for e in events],
@@ -697,12 +680,11 @@ async def msg_date(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     return EVENT_SELECT
 
 
-# ╔══════════════════════════════════════╗
-# ║         TADBIR TURI                  ║
-# ╚══════════════════════════════════════╝
+# ── TADBIR TURI ──────────────────────────────────────────────────────────────
 async def msg_event(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     lang = get_lang(ctx)
     ctx.user_data["event"] = update.message.text
+
     kb = ReplyKeyboardMarkup(
         [[KeyboardButton(tx(lang, "btn_location"), request_location=True)]],
         resize_keyboard=True
@@ -715,14 +697,13 @@ async def msg_event(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     return LOCATION_INPUT
 
 
-# ╔══════════════════════════════════════╗
-# ║           LOKATSIYA                  ║
-# ╚══════════════════════════════════════╝
+# ── LOKATSIYA ────────────────────────────────────────────────────────────────
 async def msg_location(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     lang = get_lang(ctx)
     loc  = update.message.location
     ctx.user_data["lat"] = loc.latitude
     ctx.user_data["lon"] = loc.longitude
+
     await update.message.reply_text(
         tx(lang, "ask_address"),
         parse_mode="Markdown",
@@ -731,9 +712,7 @@ async def msg_location(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     return ADDRESS_INPUT
 
 
-# ╔══════════════════════════════════════╗
-# ║        MANZIL → ZAKAZ TAYYOR         ║
-# ╚══════════════════════════════════════╝
+# ── MANZIL → ZAKAZ TAYYOR ────────────────────────────────────────────────────
 async def msg_address(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     lang    = get_lang(ctx)
     d       = ctx.user_data
@@ -771,33 +750,29 @@ async def msg_address(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         tx(lang, "order_done",
-           name=order["name"],    phone=order["phone"],
-           pkg=order["package"],  date=order["date"],
-           event=order["event"],  address=address),
+           name=order["name"],   phone=order["phone"],
+           pkg=order["package"], date=order["date"],
+           event=order["event"], address=address),
         parse_mode="Markdown"
     )
     return ConversationHandler.END
 
 
-# ╔══════════════════════════════════════╗
-# ║           ADMIN — ZAKAZLAR           ║
-# ╚══════════════════════════════════════╝
+# ── ADMIN — ZAKAZLAR ─────────────────────────────────────────────────────────
 async def admin_orders(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     orders = load_json(ORDERS_FILE)
     if not orders:
-        await update.message.reply_text(
-            "📭 *Hozircha zakazlar yo'q.*\n\nMijozlar zakaz qilganda shu yerda ko'rinadi.",
-            parse_mode="Markdown"
-        )
+        await update.message.reply_text("📭 *Hozircha zakazlar yo'q.*", parse_mode="Markdown")
         return ADMIN_HOME
-    btns = []
-    for i, o in enumerate(orders):
-        btns.append([InlineKeyboardButton(
+    btns = [
+        [InlineKeyboardButton(
             f"#{i+1} | {o['event']} | {o['date']} | {o['name']}",
             callback_data=f"order:{i}"
-        )])
+        )]
+        for i, o in enumerate(orders)
+    ]
     await update.message.reply_text(
-        f"📋 *Zakazlar ro'yxati*\n\nJami: *{len(orders)} ta zakaz*\n\nKo'rish uchun tanlang 👇",
+        f"📋 *Zakazlar ro'yxati* — jami *{len(orders)} ta*\n\nKo'rish uchun tanlang 👇",
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(btns)
     )
@@ -814,9 +789,6 @@ async def cb_view_order(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     o    = orders[i]
     flag = TEXTS.get(o.get("lang", "uz"), {}).get("flag", "?")
     await ctx.bot.send_location(update.effective_chat.id, latitude=o["lat"], longitude=o["lon"])
-    kb = InlineKeyboardMarkup([[
-        InlineKeyboardButton("🗑 Zakazni o'chirish", callback_data=f"del:{i}")
-    ]])
     await ctx.bot.send_message(
         update.effective_chat.id,
         f"📋 *Zakaz #{i+1}*\n\n"
@@ -830,7 +802,9 @@ async def cb_view_order(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         f"🌐 Til:     {flag}\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━",
         parse_mode="Markdown",
-        reply_markup=kb
+        reply_markup=InlineKeyboardMarkup([[
+            InlineKeyboardButton("🗑 Zakazni o'chirish", callback_data=f"del:{i}")
+        ]])
     )
     return ADMIN_HOME
 
@@ -847,12 +821,10 @@ async def cb_delete_order(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     return ADMIN_HOME
 
 
-# ╔══════════════════════════════════════╗
-# ║        ADMIN — NARX TAHRIRLASH       ║
-# ╚══════════════════════════════════════╝
+# ── ADMIN — NARX TAHRIRLASH ──────────────────────────────────────────────────
 async def admin_prices(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     prices = load_json(PRICES_FILE)
-    btns = [[InlineKeyboardButton(p["label"], callback_data=f"epkg:{k}")] for k, p in prices.items()]
+    btns   = [[InlineKeyboardButton(p["label"], callback_data=f"epkg:{k}")] for k, p in prices.items()]
     await update.message.reply_text(
         "✏️ *Narxlarni tahrirlash*\n\nQaysi paketni o'zgartirmoqchisiz? 👇",
         parse_mode="Markdown",
@@ -861,18 +833,16 @@ async def admin_prices(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     return EDIT_PKG_SELECT
 
 async def cb_edit_pkg_select(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
+    q   = update.callback_query
     await q.answer()
     key = q.data.split(":")[1]
     ctx.user_data["edit_key"] = key
     prices = load_json(PRICES_FILE)
-    p = prices[key]
+    p      = prices[key]
     await q.edit_message_text(
         f"✏️ *{p['label']}* — tahrirlash\n\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"💰 Joriy narx:   {p['price']}\n"
-        f"📝 Joriy tavsif: {p.get('desc', '')}\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"📝 Joriy tavsif: {p.get('desc', '')}\n\n"
         f"Yangi ma'lumot yuboring:\n`yangi narx | yangi tavsif`\n\n"
         f"📌 Misol:\n`800 000 so'm | 1 kun, 1 ta kamera`",
         parse_mode="Markdown"
@@ -899,23 +869,18 @@ async def msg_edit_pkg_value(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     return ADMIN_HOME
 
 
-# ╔══════════════════════════════════════╗
-# ║        ADMIN — MIJOZGA YOZISH        ║
-# ╚══════════════════════════════════════╝
+# ── ADMIN — MIJOZGA YOZISH ───────────────────────────────────────────────────
 async def admin_chat(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     users = [u for u in load_json(USERS_FILE) if u["id"] != ADMIN_ID]
     if not users:
-        await update.message.reply_text(
-            "👥 *Hozircha ro'yxatda foydalanuvchi yo'q.*",
-            parse_mode="Markdown"
-        )
+        await update.message.reply_text("👥 *Hozircha foydalanuvchi yo'q.*", parse_mode="Markdown")
         return ADMIN_HOME
     btns = [[InlineKeyboardButton(
         f"👤 {u['name']} | {TEXTS.get(u.get('lang','uz'),{}).get('flag','?')}",
         callback_data=f"chat:{u['id']}"
     )] for u in users]
     await update.message.reply_text(
-        f"💬 *Mijozga xabar*\n\n{len(users)} ta foydalanuvchi. Kimga? 👇",
+        f"💬 *Mijozga xabar* — {len(users)} ta foydalanuvchi\n\nKimga? 👇",
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(btns)
     )
@@ -954,28 +919,20 @@ async def msg_chat_send(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     return ADMIN_HOME
 
 
-# ╔══════════════════════════════════════╗
-# ║            BROADCAST                 ║
-# ╚══════════════════════════════════════╝
+# ── BROADCAST ────────────────────────────────────────────────────────────────
 async def admin_broadcast_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     users = [u for u in load_json(USERS_FILE) if u["id"] != ADMIN_ID]
     await update.message.reply_text(
-        f"📤 *Ommaviy xabar yuborish*\n\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"👥 Jami foydalanuvchilar: *{len(users)} ta*\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"📝 Xabar yozing yoki rasm/video yuboring.\n"
-        f"❌ Bekor qilish: /cancel",
+        f"📤 *Ommaviy xabar*\n\n👥 Jami: *{len(users)} ta*\n\n"
+        f"📝 Xabar yozing yoki rasm/video yuboring.\n❌ Bekor: /cancel",
         parse_mode="Markdown"
     )
     return BROADCAST_WAIT
 
 async def admin_broadcast_send(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    users = [u for u in load_json(USERS_FILE) if u["id"] != ADMIN_ID]
-    total = len(users)
-    prog  = await update.message.reply_text(
-        f"⏳ *Yuborilmoqda...* 0 / {total}", parse_mode="Markdown"
-    )
+    users  = [u for u in load_json(USERS_FILE) if u["id"] != ADMIN_ID]
+    total  = len(users)
+    prog   = await update.message.reply_text(f"⏳ *Yuborilmoqda...* 0 / {total}", parse_mode="Markdown")
     sent = failed = 0
     for i, u in enumerate(users, 1):
         try:
@@ -996,11 +953,7 @@ async def admin_broadcast_send(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             except Exception:
                 pass
     await prog.edit_text(
-        f"✅ *Broadcast yakunlandi!*\n\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"✔️ Yuborildi:    *{sent} ta*\n"
-        f"❌ Yuborilmadi:  *{failed} ta*\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━",
+        f"✅ *Broadcast yakunlandi!*\n\n✔️ Yuborildi: *{sent}*\n❌ Xato: *{failed}*",
         parse_mode="Markdown"
     )
     return ADMIN_HOME
@@ -1012,9 +965,7 @@ async def cmd_cancel(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
-# ╔══════════════════════════════════════╗
-# ║     /reply_ID — ADMINGA JAVOB        ║
-# ╚══════════════════════════════════════╝
+# ── /reply_ID ────────────────────────────────────────────────────────────────
 async def handle_reply(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -1025,89 +976,99 @@ async def handle_reply(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         msg     = parts[1] if len(parts) > 1 else ""
         if not msg:
             await update.message.reply_text(
-                "⚠️ Xabar bo'sh!\n\n📌 Misol:\n`/reply_123456789 Salom! Tez orada qo'ng'iroq qilamiz.`",
+                "⚠️ Xabar bo'sh!\n\n📌 Misol:\n`/reply_123456789 Salom!`",
                 parse_mode="Markdown"
             )
             return
-        await ctx.bot.send_message(
-            user_id,
-            f"📩 *Admin javobi:*\n\n{msg}",
-            parse_mode="Markdown"
-        )
+        await ctx.bot.send_message(user_id, f"📩 *Admin javobi:*\n\n{msg}", parse_mode="Markdown")
         await update.message.reply_text("✅ *Xabar mijozga yuborildi!*", parse_mode="Markdown")
     except Exception as e:
         await update.message.reply_text(f"❌ Xato: {e}")
 
 
-# ╔══════════════════════════════════════╗
-# ║               MAIN                   ║
-# ╚══════════════════════════════════════╝
+# ── MAIN ─────────────────────────────────────────────────────────────────────
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # /reply_ID — conversation tashqarisida ishlaydi
+    # /reply_ID — conversation tashqarisida
     app.add_handler(MessageHandler(filters.Regex(r"^/reply_\d+"), handle_reply))
 
     conv = ConversationHandler(
-        entry_points=[
-            CommandHandler("start", cmd_start),
-        ],
+        entry_points=[CommandHandler("start", cmd_start)],
         states={
-            # Til tanlash
+            # Til tanlash — faqat inline callback
             LANG_SELECT: [
                 CallbackQueryHandler(cb_lang, pattern="^lang:"),
-                # Agar foydalanuvchi biror matn yozsa — lang_kb qayta ko'rsatiladi
-                MessageHandler(filters.TEXT & ~filters.COMMAND, lambda u, c: u.message.reply_text(
-                    "🌐 Iltimos tilni tanlang 👆", reply_markup=lang_kb()
-                )),
             ],
 
-            # ── CONTACT state: kontakt + tugmalar + inline lang ──────────────
+            # CONTACT state:
+            # - filters.CONTACT  → msg_contact      (raqam yuborildi)
+            # - filters.TEXT     → msg_contact_text  (tugma/matn keldi)
+            # - CallbackQuery    → cb_lang            (til o'zgartirish)
             CONTACT: [
-                # 1) Kontakt (request_contact tugmasi)
                 MessageHandler(filters.CONTACT, msg_contact),
-                # 2) Barcha matnli xabarlar — ichida tugma tekshiruvi bor
-                MessageHandler(filters.TEXT & ~filters.COMMAND, msg_contact),
-                # 3) Til tanlash inline callback (agar til o'zgartirish bosilsa)
+                MessageHandler(filters.TEXT & ~filters.COMMAND, msg_contact_text),
                 CallbackQueryHandler(cb_lang, pattern="^lang:"),
             ],
 
-            # Mijoz admin xabarini yozadi
             ADMIN_MSG_INPUT: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, msg_send_to_admin),
             ],
 
-            # Paket, sana, tadbir, lokatsiya, manzil
-            PKG_SELECT:     [CallbackQueryHandler(cb_pkg, pattern="^pkg:")],
-            DATE_INPUT:     [MessageHandler(filters.TEXT & ~filters.COMMAND, msg_date)],
-            EVENT_SELECT:   [MessageHandler(filters.TEXT & ~filters.COMMAND, msg_event)],
-            LOCATION_INPUT: [MessageHandler(filters.LOCATION, msg_location)],
-            ADDRESS_INPUT:  [MessageHandler(filters.TEXT & ~filters.COMMAND, msg_address)],
+            PKG_SELECT: [
+                CallbackQueryHandler(cb_pkg, pattern="^pkg:"),
+            ],
 
-            # Admin panel
+            DATE_INPUT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, msg_date),
+            ],
+
+            EVENT_SELECT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, msg_event),
+            ],
+
+            LOCATION_INPUT: [
+                MessageHandler(filters.LOCATION, msg_location),
+            ],
+
+            ADDRESS_INPUT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, msg_address),
+            ],
+
             ADMIN_HOME: [
-                MessageHandler(filters.Regex("Zakazlar"),        admin_orders),
-                MessageHandler(filters.Regex("Narxlarni"),       admin_prices),
-                MessageHandler(filters.Regex("Mijozga"),         admin_chat),
-                MessageHandler(filters.Regex("Broadcast"),       admin_broadcast_start),
+                MessageHandler(filters.Regex("Zakazlar"),    admin_orders),
+                MessageHandler(filters.Regex("Narxlarni"),   admin_prices),
+                MessageHandler(filters.Regex("Mijozga"),     admin_chat),
+                MessageHandler(filters.Regex("Broadcast"),   admin_broadcast_start),
                 CallbackQueryHandler(cb_view_order,   pattern="^order:"),
                 CallbackQueryHandler(cb_delete_order, pattern="^del:"),
             ],
-            EDIT_PKG_SELECT:  [CallbackQueryHandler(cb_edit_pkg_select, pattern="^epkg:")],
-            EDIT_PKG_VALUE:   [MessageHandler(filters.TEXT & ~filters.COMMAND, msg_edit_pkg_value)],
-            CHAT_USER_SELECT: [CallbackQueryHandler(cb_chat_select, pattern="^chat:")],
+
+            EDIT_PKG_SELECT: [
+                CallbackQueryHandler(cb_edit_pkg_select, pattern="^epkg:"),
+            ],
+
+            EDIT_PKG_VALUE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, msg_edit_pkg_value),
+            ],
+
+            CHAT_USER_SELECT: [
+                CallbackQueryHandler(cb_chat_select, pattern="^chat:"),
+            ],
+
             CHAT_SEND: [
                 MessageHandler(
                     (filters.TEXT | filters.PHOTO | filters.VIDEO) & ~filters.COMMAND,
                     msg_chat_send
-                )
+                ),
             ],
+
             BROADCAST_WAIT: [
                 CommandHandler("cancel", cmd_cancel),
                 MessageHandler(
                     (filters.TEXT | filters.PHOTO | filters.VIDEO) & ~filters.COMMAND,
                     admin_broadcast_send
-                )
+                ),
             ],
         },
         fallbacks=[
