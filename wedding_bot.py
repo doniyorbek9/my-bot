@@ -522,12 +522,13 @@ async def cb_lang(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     user = q.from_user
     register_user(user.id, user.full_name, lang)
 
-    await q.edit_message_text(
-        tx(lang, "welcome"),
-        parse_mode="Markdown"
-    )
+    # Inline xabarni o'chiramiz
+    await q.delete_message()
+
+    # Welcome + keyboard BITTA xabarda
     await q.message.reply_text(
-        "👇",
+        tx(lang, "welcome"),
+        parse_mode="Markdown",
         reply_markup=main_kb(lang)
     )
     return CONTACT
