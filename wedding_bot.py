@@ -3,6 +3,7 @@
 
 import json
 import os
+import re
 from telegram import (
     Update, ReplyKeyboardMarkup, KeyboardButton,
     InlineKeyboardMarkup, InlineKeyboardButton,
@@ -459,6 +460,32 @@ def main_kb(lang):
         resize_keyboard=True
     )
 
+# ╔══════════════════════════════════════╗
+# ║     TUGMA MATNI ANIQLASH (HELPER)    ║
+# ╚══════════════════════════════════════╝
+
+# Barcha tillardagi "admin" tugma matnlari
+ADMIN_BTN_TEXTS = [
+    "📞 Admin bilan bog'lanish",       # uz
+    "📞 Админ билан боғланиш",         # uz_cyr
+    "📞 Связаться с администратором",   # ru
+    "📞 Contact admin",                 # en
+]
+
+# Barcha tillardagi "til o'zgartirish" tugma matnlari
+LANG_BTN_TEXTS = [
+    "🌐 Tilni o'zgartirish",   # uz
+    "🌐 Тилни ўзгартириш",     # uz_cyr
+    "🌐 Сменить язык",          # ru
+    "🌐 Change language",        # en
+]
+
+def is_admin_btn(text: str) -> bool:
+    return text.strip() in ADMIN_BTN_TEXTS
+
+def is_lang_btn(text: str) -> bool:
+    return text.strip() in LANG_BTN_TEXTS
+
 
 # ╔══════════════════════════════════════╗
 # ║              /START                  ║
@@ -486,7 +513,6 @@ async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     saved = get_saved_lang(user.id)
     if saved:
         ctx.user_data["lang"] = saved
-        flag = TEXTS.get(saved, {}).get("flag", saved)
         await update.message.reply_text(
             tx(saved, "welcome"),
             parse_mode="Markdown",
@@ -516,13 +542,11 @@ async def cb_lang(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     user = q.from_user
     register_user(user.id, user.full_name, lang)
 
-    # Inline xabarni yopamiz
     try:
         await q.edit_message_reply_markup(reply_markup=None)
     except Exception:
         pass
 
-    # Welcome + keyboard BITTA xabarda — shu yerda CONTACT state boshlanadi
     await q.message.reply_text(
         tx(lang, "welcome"),
         parse_mode="Markdown",
@@ -546,7 +570,6 @@ async def msg_change_lang(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 # ║     ADMIN BILAN BOG'LANISH           ║
 # ╚══════════════════════════════════════╝
 async def msg_ask_admin(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    """Tugma bosilganda xabar yozishni so'raydi"""
     lang = get_lang(ctx)
     await update.message.reply_text(
         tx(lang, "ask_admin_msg"),
@@ -556,14 +579,12 @@ async def msg_ask_admin(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     return ADMIN_MSG_INPUT
 
 async def msg_send_to_admin(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    """Mijoz yozgan xabarni adminga yuboradi"""
     lang = get_lang(ctx)
     user = update.effective_user
     user_msg = update.message.text
     uname = f"@{user.username}" if user.username else "username yo'q"
     flag  = TEXTS.get(lang, {}).get("flag", lang)
 
-    # Adminga — nusxa olish uchun qulay format
     await ctx.bot.send_message(
         ADMIN_ID,
         f"📞 *YANGI MUROJAAT KELDI!*\n\n"
@@ -578,13 +599,8 @@ async def msg_send_to_admin(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         f"📩 Javob berish uchun quyidagini bosing 👇",
         parse_mode="Markdown"
     )
-    # Reply tugmasi — bosish = nusxa olish
-    await ctx.bot.send_message(
-        ADMIN_ID,
-        f"/reply_{user.id}",
-    )
+    await ctx.bot.send_message(ADMIN_ID, f"/reply_{user.id}")
 
-    # Mijozga tasdiqlash
     await update.message.reply_text(
         tx(lang, "admin_msg_sent"),
         parse_mode="Markdown",
@@ -598,33 +614,48 @@ async def msg_send_to_admin(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 # ╚══════════════════════════════════════╝
 async def msg_contact(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     lang = get_lang(ctx)
-    
-    # Kontakt tekshirish
-    if not update.message.contact:
+
+    # ── Tugma matnlari kelganda (kontakt emas) ──────────────────────────────
+    if update.message.text:
+        text = update.message.text.strip()
+        if is_admin_btn(text):
+            return await msg_ask_admin(update, ctx)
+        if is_lang_btn(text):
+            return await msg_change_lang(update, ctx)
+        # Boshqa matn — eslatma
         await update.message.reply_text(
             "⚠️ Iltimos quyidagi tugmani bosib telefon raqamingizni yuboring 👇",
             reply_markup=main_kb(lang)
         )
         return CONTACT
-    
-    contact = update.message.contact
-    ctx.user_data["name"]  = contact.first_name or update.effective_user.full_name
-    ctx.user_data["phone"] = contact.phone_number
 
-    prices = load_json(PRICES_FILE)
-    btns = []
-    for key, p in prices.items():
-        btns.append([InlineKeyboardButton(
-            f"{p['label']}\n📹 {p.get('desc', '')}",
-            callback_data=f"pkg:{key}"
-        )])
+    # ── Kontakt keldi ────────────────────────────────────────────────────────
+    if update.message.contact:
+        contact = update.message.contact
+        ctx.user_data["name"]  = contact.first_name or update.effective_user.full_name
+        ctx.user_data["phone"] = contact.phone_number
 
+        prices = load_json(PRICES_FILE)
+        btns = []
+        for key, p in prices.items():
+            btns.append([InlineKeyboardButton(
+                f"{p['label']}\n📹 {p.get('desc', '')}",
+                callback_data=f"pkg:{key}"
+            )])
+
+        await update.message.reply_text(
+            tx(lang, "contact_sent"),
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(btns)
+        )
+        return PKG_SELECT
+
+    # ── Location yoki boshqa media keldi ────────────────────────────────────
     await update.message.reply_text(
-        tx(lang, "contact_sent"),
-        parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup(btns)
+        "⚠️ Iltimos quyidagi tugmani bosib telefon raqamingizni yuboring 👇",
+        reply_markup=main_kb(lang)
     )
-    return PKG_SELECT
+    return CONTACT
 
 
 # ╔══════════════════════════════════════╗
@@ -633,8 +664,8 @@ async def msg_contact(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 async def cb_pkg(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
-    lang = get_lang(ctx)
-    key  = q.data.split(":")[1]
+    lang  = get_lang(ctx)
+    key   = q.data.split(":")[1]
     prices = load_json(PRICES_FILE)
     p = prices[key]
     ctx.user_data["package"] = f"{p['label']} | {p.get('desc', '')}"
@@ -1025,35 +1056,34 @@ def main():
             # Til tanlash
             LANG_SELECT: [
                 CallbackQueryHandler(cb_lang, pattern="^lang:"),
+                # Agar foydalanuvchi biror matn yozsa — lang_kb qayta ko'rsatiladi
+                MessageHandler(filters.TEXT & ~filters.COMMAND, lambda u, c: u.message.reply_text(
+                    "🌐 Iltimos tilni tanlang 👆", reply_markup=lang_kb()
+                )),
             ],
-            # Asosiy — kontakt, admin bog'lanish, til o'zgartirish
+
+            # ── CONTACT state: kontakt + tugmalar + inline lang ──────────────
             CONTACT: [
+                # 1) Kontakt (request_contact tugmasi)
                 MessageHandler(filters.CONTACT, msg_contact),
-                MessageHandler(
-                    filters.Regex(
-                        "Admin bilan|bog'lanish|Админ билан|боғланиш|"
-                        "администр|Contact admin|администратором"
-                    ),
-                    msg_ask_admin
-                ),
-                MessageHandler(
-                    filters.Regex(
-                        "Tilni o'zgartir|Тилни ўзгартир|Сменить язык|Change language"
-                    ),
-                    msg_change_lang
-                ),
+                # 2) Barcha matnli xabarlar — ichida tugma tekshiruvi bor
+                MessageHandler(filters.TEXT & ~filters.COMMAND, msg_contact),
+                # 3) Til tanlash inline callback (agar til o'zgartirish bosilsa)
                 CallbackQueryHandler(cb_lang, pattern="^lang:"),
             ],
+
             # Mijoz admin xabarini yozadi
             ADMIN_MSG_INPUT: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, msg_send_to_admin),
             ],
+
             # Paket, sana, tadbir, lokatsiya, manzil
             PKG_SELECT:     [CallbackQueryHandler(cb_pkg, pattern="^pkg:")],
             DATE_INPUT:     [MessageHandler(filters.TEXT & ~filters.COMMAND, msg_date)],
             EVENT_SELECT:   [MessageHandler(filters.TEXT & ~filters.COMMAND, msg_event)],
             LOCATION_INPUT: [MessageHandler(filters.LOCATION, msg_location)],
             ADDRESS_INPUT:  [MessageHandler(filters.TEXT & ~filters.COMMAND, msg_address)],
+
             # Admin panel
             ADMIN_HOME: [
                 MessageHandler(filters.Regex("Zakazlar"),        admin_orders),
