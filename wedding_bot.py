@@ -6,8 +6,7 @@ from datetime import datetime, date
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.types import (
     Message, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton,
-    InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove,
-    KeyboardButtonRequestContact
+    InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove
 )
 from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
