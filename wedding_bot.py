@@ -4,8 +4,14 @@
 import json
 import os
 from datetime import datetime
-from telegram import *
-from telegram.ext import *
+from telegram import (
+    Update, ReplyKeyboardMarkup, KeyboardButton,
+    ReplyKeyboardRemove
+)
+from telegram.ext import (
+    Application, CommandHandler, MessageHandler,
+    ConversationHandler, ContextTypes, filters
+)
 
 # ===== CONFIG =====
 TOKEN = os.getenv("TOKEN")
@@ -72,8 +78,12 @@ async def set_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     return PHONE
 
-# ===== PHONE =====
+# ===== PHONE (FIXED) =====
 async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message.contact:
+        await update.message.reply_text("❌ Iltimos tugma orqali raqam yuboring")
+        return PHONE
+
     phone = update.message.contact.phone_number
     context.user_data["phone"] = phone
 
@@ -93,7 +103,10 @@ async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ===== PACKAGE =====
 async def choose_package(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["package"] = update.message.text
-    await update.message.reply_text("To‘y sanasini kiriting (YYYY-MM-DD):", reply_markup=ReplyKeyboardRemove())
+    await update.message.reply_text(
+        "To‘y sanasini kiriting (YYYY-MM-DD):",
+        reply_markup=ReplyKeyboardRemove()
+    )
     return DATE
 
 # ===== DATE =====
@@ -111,7 +124,10 @@ async def get_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     kb = [["Nikoh","Banket"],["Xatna","Chaqaloq"],["Umra","Tug'ilgan kun"]]
 
-    await update.message.reply_text("Marosim turini tanlang:", reply_markup=ReplyKeyboardMarkup(kb, resize_keyboard=True))
+    await update.message.reply_text(
+        "Marosim turini tanlang:",
+        reply_markup=ReplyKeyboardMarkup(kb, resize_keyboard=True)
+    )
     return EVENT
 
 # ===== EVENT =====
@@ -120,17 +136,27 @@ async def get_event(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         "📍 Lokatsiya yuboring:",
-        reply_markup=ReplyKeyboardMarkup([[KeyboardButton("Lokatsiya", request_location=True)]], resize_keyboard=True)
+        reply_markup=ReplyKeyboardMarkup(
+            [[KeyboardButton("Lokatsiya", request_location=True)]],
+            resize_keyboard=True
+        )
     )
     return LOCATION
 
 # ===== LOCATION =====
 async def get_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message.location:
+        await update.message.reply_text("❌ Tugma orqali lokatsiya yuboring")
+        return LOCATION
+
     loc = update.message.location
     context.user_data["location"] = (loc.latitude, loc.longitude)
 
     kb = [["Ha"],["Yo‘q"]]
-    await update.message.reply_text("Tasdiqlaysizmi?", reply_markup=ReplyKeyboardMarkup(kb, resize_keyboard=True))
+    await update.message.reply_text(
+        "Tasdiqlaysizmi?",
+        reply_markup=ReplyKeyboardMarkup(kb, resize_keyboard=True)
+    )
     return CONFIRM
 
 # ===== CONFIRM =====
@@ -173,15 +199,18 @@ async def confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ Zakaz yuborildi!")
     return ConversationHandler.END
 
-# ===== ADMIN PANEL =====
+# ===== ADMIN =====
 async def admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
 
     kb = [["📦 Zakazlar"],["📢 Broadcast"]]
-    await update.message.reply_text("Admin panel", reply_markup=ReplyKeyboardMarkup(kb, resize_keyboard=True))
+    await update.message.reply_text(
+        "Admin panel",
+        reply_markup=ReplyKeyboardMarkup(kb, resize_keyboard=True)
+    )
 
-# ===== SHOW ORDERS =====
+# ===== ORDERS =====
 async def show_orders(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -230,11 +259,11 @@ def main():
         entry_points=[CommandHandler("start", start)],
         states={
             LANG: [MessageHandler(filters.TEXT, set_lang)],
-            PHONE: [MessageHandler(filters.CONTACT, get_phone)],
+            PHONE: [MessageHandler(filters.ALL, get_phone)],
             PACKAGE: [MessageHandler(filters.TEXT, choose_package)],
             DATE: [MessageHandler(filters.TEXT, get_date)],
             EVENT: [MessageHandler(filters.TEXT, get_event)],
-            LOCATION: [MessageHandler(filters.LOCATION, get_location)],
+            LOCATION: [MessageHandler(filters.ALL, get_location)],
             CONFIRM: [MessageHandler(filters.TEXT, confirm)],
         },
         fallbacks=[]
