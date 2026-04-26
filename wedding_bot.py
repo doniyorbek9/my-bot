@@ -2,14 +2,13 @@ import asyncio
 import json
 import os
 import logging
-import re
 from datetime import datetime, date
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.types import (
     Message, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton,
     InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove
 )
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -41,9 +40,7 @@ DEFAULT_PACKAGES = {
           "desc_uz": "2 kun | 1-kun 1 ta, 2-kun 2 ta kamera", "desc_ru": "2 дня | 1-й день 1 камера, 2-й день 2 камеры", "desc_en": "2 days | Day 1: 1 cam, Day 2: 2 cams",
           "price": "2,000,000 so'm"},
     "4": {"name_uz": "4-Paket (VIP)", "name_ru": "Пакет 4 (VIP)", "name_en": "Package 4 (VIP)",
-          "desc_uz": "2 kun | 1-kun 1 ta, 2-kun 2 ta kamera + 1 ta kran kamera",
-          "desc_ru": "2 дня | 1-й день 1 камера, 2-й день 2 камеры + кран-камера",
-          "desc_en": "2 days | Day 1: 1 cam, Day 2: 2 cams + crane cam",
+          "desc_uz": "2 kun | 1-kun 1 ta, 2-kun 2 ta kamera + 1 ta kran kamera", "desc_ru": "2 дня | 1-й день 1 камера, 2-й день 2 камеры + кран-камера", "desc_en": "2 days | Day 1: 1 cam, Day 2: 2 cams + crane cam",
           "price": "300$"},
 }
 
@@ -57,13 +54,25 @@ def save_json(path, data):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-def get_users(): return load_json(USERS_FILE, {})
-def save_users(u): save_json(USERS_FILE, u)
-def get_orders(): return load_json(ORDERS_FILE, [])
-def save_orders(o): save_json(ORDERS_FILE, o)
-def get_packages(): return load_json(PACKAGES_FILE, DEFAULT_PACKAGES)
-def save_packages(p): save_json(PACKAGES_FILE, p)
+def get_users():
+    return load_json(USERS_FILE, {})
 
+def save_users(u):
+    save_json(USERS_FILE, u)
+
+def get_orders():
+    return load_json(ORDERS_FILE, [])
+
+def save_orders(o):
+    save_json(ORDERS_FILE, o)
+
+def get_packages():
+    return load_json(PACKAGES_FILE, DEFAULT_PACKAGES)
+
+def save_packages(p):
+    save_json(PACKAGES_FILE, p)
+
+# Init packages
 if not os.path.exists(PACKAGES_FILE):
     save_packages(DEFAULT_PACKAGES)
 
@@ -95,8 +104,8 @@ TEXTS = {
         "choose_package": "📦 Paketni tanlang:",
         "choose_ceremony": "🎉 Marosim turini tanlang:",
         "ask_date": "📅 To'y sanasini kiriting (KK.OO.YYYY formatda):\nMasalan: 25.06.2025",
-        "date_error": "❌ Sana noto'g'ri yoki o'tib ketgan. Iltimos, to'g'ri sana kiriting (masalan: 25.06.2026)",
-        "ask_location": "📍 Manzilni matn ko'rinishida yozing yoki 📎 lokatsiya yuboring:",
+        "date_error": "❌ Sana noto'g'ri yoki o'tib ketgan. Iltimos, bugungi kundan keyingi sanani kiriting.",
+        "ask_location": "📍 Manzilni (lokatsiyani) yuboring:",
         "confirm_title": "✅ Ma'lumotlarni tasdiqlaysizmi?",
         "send_yes": "✅ Ha, yuboraman",
         "send_no": "❌ Yo'q, yubormayman",
@@ -109,16 +118,16 @@ TEXTS = {
         "new_order": "📋 Yangi zakaz",
         "change_lang": "🌐 Tilni o'zgartirish",
     },
-    "uzc": {
-        "welcome": "🎬 Садаф Медиа Видео Студиясига хуш келибсиз!\n\nМен сизга заказ бериш жараёнида ёрдам бераман.",
+    "uzc": {  # Uzbek cyrillic
+        "welcome": "🎬 Садаф Медиа Видео Студиясига хуш келибсиз!\n\nМен сизга захар бериш жараёнида ёрдам бераман.",
         "ask_phone": "📱 Давом этиш учун телефон рақамингизни юборинг:",
         "send_phone_btn": "📱 Телефон рақам юбориш",
         "contact_admin": "👨‍💼 Админ билан алоқа",
         "choose_package": "📦 Пакетни танланг:",
         "choose_ceremony": "🎉 Маросим турини танланг:",
         "ask_date": "📅 Тўй санасини киритинг (КК.ОО.YYYY форматда):\nМасалан: 25.06.2025",
-        "date_error": "❌ Сана нотўғри ёки ўтиб кетган. Тўғри сана киритинг (масалан: 25.06.2026)",
-        "ask_location": "📍 Манзилни матн кўринишида ёзинг ёки 📎 локация юборинг:",
+        "date_error": "❌ Сана нотўғри ёки ўтиб кетган. Илтимос, бугунги кундан кейинги санани киритинг.",
+        "ask_location": "📍 Манзилни (локацияни) юборинг:",
         "confirm_title": "✅ Маълумотларни тасдиқлайсизми?",
         "send_yes": "✅ Ха, юбораман",
         "send_no": "❌ Йўқ, юборманам",
@@ -139,8 +148,8 @@ TEXTS = {
         "choose_package": "📦 Выберите пакет:",
         "choose_ceremony": "🎉 Выберите тип мероприятия:",
         "ask_date": "📅 Введите дату торжества (в формате ДД.ММ.ГГГГ):\nНапример: 25.06.2025",
-        "date_error": "❌ Дата неверна или уже прошла. Введите правильную дату (например: 25.06.2026)",
-        "ask_location": "📍 Напишите адрес текстом или отправьте 📎 геолокацию:",
+        "date_error": "❌ Дата неверна или уже прошла. Пожалуйста, введите будущую дату.",
+        "ask_location": "📍 Отправьте местоположение (локацию):",
         "confirm_title": "✅ Подтвердите отправку данных:",
         "send_yes": "✅ Да, отправить",
         "send_no": "❌ Нет, не отправлять",
@@ -161,8 +170,8 @@ TEXTS = {
         "choose_package": "📦 Choose a package:",
         "choose_ceremony": "🎉 Select ceremony type:",
         "ask_date": "📅 Enter the event date (DD.MM.YYYY format):\nExample: 25.06.2025",
-        "date_error": "❌ Invalid or past date. Please enter a valid date (e.g. 25.06.2026)",
-        "ask_location": "📍 Type your address or send 📎 your location:",
+        "date_error": "❌ Invalid or past date. Please enter a future date.",
+        "ask_location": "📍 Send your location:",
         "confirm_title": "✅ Confirm your details:",
         "send_yes": "✅ Yes, submit",
         "send_no": "❌ No, cancel",
@@ -190,12 +199,15 @@ def set_user_lang(user_id, lang, name=None, username=None):
     if uid not in users:
         users[uid] = {}
     users[uid]["lang"] = lang
-    if name: users[uid]["name"] = name
-    if username: users[uid]["username"] = username
+    if name:
+        users[uid]["name"] = name
+    if username:
+        users[uid]["username"] = username
     save_users(users)
 
 def get_user_phone(user_id):
-    return get_users().get(str(user_id), {}).get("phone", None)
+    users = get_users()
+    return users.get(str(user_id), {}).get("phone", None)
 
 def set_user_phone(user_id, phone):
     users = get_users()
@@ -340,7 +352,7 @@ async def phone_text_fallback(message: Message, state: FSMContext):
     lang = get_user_lang(message.from_user.id)
     await message.answer(t(lang, "ask_phone"), reply_markup=phone_keyboard(lang))
 
-# ==================== MAIN MENU ====================
+# ==================== MAIN MENU BUTTONS ====================
 @router.message(F.text)
 async def handle_text(message: Message, state: FSMContext):
     user_id = message.from_user.id
@@ -404,76 +416,51 @@ async def choose_ceremony(callback: CallbackQuery, state: FSMContext):
     await state.set_state(UserStates.waiting_date)
     await callback.answer()
 
-# ==================== BUG FIX 1: SANA ====================
 @router.message(UserStates.waiting_date)
 async def got_date(message: Message, state: FSMContext):
     lang = get_user_lang(message.from_user.id)
     txt = message.text.strip()
-
+    # Try multiple date formats
     event_date = None
-
-    # DD.MM.YYYY yoki D.M.YYYY — barcha platformalarda ishlaydigan regex usuli
-    m = re.match(r"^(\d{1,2})\.(\d{1,2})\.(\d{4})$", txt)
-    if m:
+    for fmt in ["%d.%m.%Y", "%d.%-m.%Y", "%d/%m/%Y", "%Y-%m-%d"]:
         try:
-            event_date = date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
+            event_date = datetime.strptime(txt, fmt).date()
+            break
         except ValueError:
-            pass
-
-    # DD/MM/YYYY
+            continue
+    # Also try parsing DD.M.YYYY manually
     if event_date is None:
-        try:
-            event_date = datetime.strptime(txt, "%d/%m/%Y").date()
-        except ValueError:
-            pass
-
-    # YYYY-MM-DD
-    if event_date is None:
-        try:
-            event_date = datetime.strptime(txt, "%Y-%m-%d").date()
-        except ValueError:
-            pass
-
+        import re
+        m = re.match(r"^(\d{1,2})\.(\d{1,2})\.(\d{4})$", txt)
+        if m:
+            try:
+                event_date = date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
+            except ValueError:
+                pass
     if event_date is None:
         await message.answer(t(lang, "date_error"))
         return
-
     if event_date < date.today():
         await message.answer(t(lang, "date_error"))
         return
 
-    # Sanani standart formatda saqlash
-    formatted_date = event_date.strftime("%d.%m.%Y")
-    await state.update_data(event_date=formatted_date)
+    await state.update_data(event_date=txt)
     await message.answer(t(lang, "ask_location"), reply_markup=ReplyKeyboardRemove())
     await state.set_state(UserStates.waiting_location)
 
-# ==================== BUG FIX 2: LOCATION ====================
 @router.message(UserStates.waiting_location, F.location)
-async def got_location_geo(message: Message, state: FSMContext):
-    """Foydalanuvchi GPS lokatsiya yuborganida"""
+async def got_location(message: Message, state: FSMContext):
     lang = get_user_lang(message.from_user.id)
     lat = message.location.latitude
     lon = message.location.longitude
-    await state.update_data(
-        location_lat=lat,
-        location_lon=lon,
-        location_text=f"📍 {lat}, {lon}"
-    )
+    await state.update_data(location_lat=lat, location_lon=lon, location_text=f"📍 {lat}, {lon}")
     await show_confirm(message, state, lang)
 
 @router.message(UserStates.waiting_location)
-async def got_location_text(message: Message, state: FSMContext):
-    """Foydalanuvchi manzilni matn ko'rinishida yozganida — show_confirm ga o'tadi"""
+async def location_fallback(message: Message, state: FSMContext):
     lang = get_user_lang(message.from_user.id)
-    await state.update_data(
-        location_lat=None,
-        location_lon=None,
-        location_text=message.text
-    )
-    await show_confirm(message, state, lang)
+    await message.answer(t(lang, "ask_location"))
 
-# ==================== CONFIRM ====================
 async def show_confirm(message: Message, state: FSMContext, lang: str):
     data = await state.get_data()
     users = get_users()
@@ -488,7 +475,7 @@ async def show_confirm(message: Message, state: FSMContext, lang: str):
         f"📦 {data.get('package_name')} — {data.get('package_price')}\n"
         f"🎉 {data.get('ceremony')}\n"
         f"📅 {data.get('event_date')}\n"
-        f"📍 {data.get('location_text', '?')}\n"
+        f"📍 Lokatsiya: {data.get('location_text', '?')}\n"
         f"━━━━━━━━━━━━━━━━"
     )
     await message.answer(t(lang, "confirm_title") + "\n\n" + text, reply_markup=confirm_keyboard(lang))
@@ -522,6 +509,7 @@ async def confirm_yes(callback: CallbackQuery, state: FSMContext):
     orders.append(order)
     save_orders(orders)
 
+    # Notify admin
     bot = callback.bot
     admin_text = (
         f"🆕 YANGI ZAKAZ #{order['id']}\n"
@@ -538,7 +526,7 @@ async def confirm_yes(callback: CallbackQuery, state: FSMContext):
     )
     await bot.send_message(ADMIN_ID, admin_text)
 
-    # GPS lokatsiya bo'lsa alohida yuborish
+    # Send location separately to admin
     if data.get("location_lat"):
         await bot.send_location(ADMIN_ID, latitude=data["location_lat"], longitude=data["location_lon"])
 
@@ -564,9 +552,10 @@ async def msg_to_admin(message: Message, state: FSMContext):
     name = users.get(uid, {}).get("name", message.from_user.first_name or "?")
     phone = get_user_phone(message.from_user.id)
 
-    await message.bot.send_message(
+    bot = message.bot
+    await bot.send_message(
         ADMIN_ID,
-        f"💬 XABAR\n"
+        f"💬 XABAR #{message.from_user.id}\n"
         f"👤 {name} | 📱 {phone}\n"
         f"🆔 ID: {message.from_user.id}\n"
         f"━━━━━━━━━━━━━━━━\n"
@@ -587,7 +576,7 @@ async def admin_reply_command(message: Message, state: FSMContext):
         await state.update_data(reply_target=target_id)
         await state.set_state(AdminStates.reply_to_user)
         await message.answer(f"✏️ {target_id} ga javob yozing:")
-    except Exception:
+    except:
         await message.answer("❌ Xato format.")
 
 @router.message(AdminStates.reply_to_user)
@@ -599,7 +588,7 @@ async def admin_send_reply(message: Message, state: FSMContext):
     try:
         await message.bot.send_message(target_id, f"👨‍💼 Admin:\n\n{message.text}")
         await message.answer("✅ Xabar yuborildi!")
-    except Exception:
+    except:
         await message.answer("❌ Xabar yuborib bo'lmadi.")
     await state.clear()
     await message.answer("Admin panel:", reply_markup=admin_menu())
@@ -619,25 +608,28 @@ async def handle_admin_text(message: Message, state: FSMContext):
 
     if txt == "📦 Paket narxlari":
         await show_packages_admin(message)
+
     elif txt == "📋 Zakazlar":
         await show_orders_admin(message)
+
     elif txt == "💬 Chat":
         await show_users_for_chat(message, state)
+
     elif txt == "📢 Broadcast":
         await message.answer("📢 Barcha foydalanuvchilarga yuboriladigan xabarni yozing:")
         await state.set_state(AdminStates.broadcast_message)
+
+    elif await state.get_state() == AdminStates.broadcast_message.state:
+        await do_broadcast(message, state)
 
 async def show_packages_admin(message: Message):
     pkgs = get_packages()
     text = "📦 Paketlar narxlari:\n\n"
     buttons = []
     for pid, pkg in pkgs.items():
-        text += f"<b>{pkg.get('name_uz')}</b> — {pkg.get('price')}\n{pkg.get('desc_uz')}\n\n"
-        buttons.append([InlineKeyboardButton(
-            text=f"✏️ {pkg.get('name_uz')} tahrirlash",
-            callback_data=f"editpkg_{pid}"
-        )])
-    await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
+        text += f"*{pkg.get('name_uz')}* — {pkg.get('price')}\n{pkg.get('desc_uz')}\n\n"
+        buttons.append([InlineKeyboardButton(text=f"✏️ {pkg.get('name_uz')} tahrirlash", callback_data=f"editpkg_{pid}")])
+    await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons), parse_mode=ParseMode.MARKDOWN)
 
 @router.callback_query(F.data.startswith("editpkg_"))
 async def edit_package_start(callback: CallbackQuery, state: FSMContext):
@@ -683,7 +675,7 @@ async def show_orders_admin(message: Message):
     if not orders:
         await message.answer("📋 Zakazlar yo'q.")
         return
-    for order in orders[-20:]:
+    for order in orders[-20:]:  # Last 20 orders
         text = (
             f"🆔 Zakaz #{order['id']} | {order['created_at']}\n"
             f"👤 {order['name']} | 📱 {order['phone']}\n"
@@ -729,7 +721,7 @@ async def admin_chat_send(message: Message, state: FSMContext):
     try:
         await message.bot.send_message(target, f"👨‍💼 Admin:\n\n{message.text}")
         await message.answer("✅ Xabar yuborildi!")
-    except Exception:
+    except:
         await message.answer("❌ Yuborib bo'lmadi.")
     await state.clear()
     await message.answer("Admin panel:", reply_markup=admin_menu())
@@ -745,7 +737,7 @@ async def do_broadcast(message: Message, state: FSMContext):
         try:
             await message.bot.send_message(int(uid), f"📢 Sadaf Media:\n\n{message.text}")
             success += 1
-        except Exception:
+        except:
             failed += 1
     await message.answer(f"📢 Broadcast tugadi!\n✅ Yuborildi: {success}\n❌ Yuborilmadi: {failed}")
     await state.clear()
