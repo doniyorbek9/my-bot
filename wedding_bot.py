@@ -9,7 +9,7 @@ from telegram.ext import (
 
 # ===== CONFIG =====
 # Tokeningizni quyidagi qatorga yozing yoki muhit o'zgaruvchisi (env) orqali bering
-TOKEN = "SIZNING_TOKENINGIZNI_SHU_YERGA_YOZING"
+TOKEN = "TOKEN"
 ADMIN_ID = 7948989650  # Admin ID raqamini tekshiring
 
 # ===== FAYLLAR =====
