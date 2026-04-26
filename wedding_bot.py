@@ -745,7 +745,8 @@ async def do_broadcast(message: Message, state: FSMContext):
 
 # ==================== MAIN ====================
 async def main():
-    bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
+    from aiogram.client.default import DefaultBotProperties
+    bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher(storage=MemoryStorage())
     dp.include_router(router)
     logger.info("Bot ishga tushdi...")
