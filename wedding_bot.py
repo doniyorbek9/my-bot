@@ -8,8 +8,9 @@ from telegram.ext import (
 )
 
 # ===== CONFIG =====
-TOKEN = os.getenv("TOKEN") # Tokeningizni shu yerga yoki muhit o'zgaruvchisiga joylang
-ADMIN_ID = 7948989650 
+# Tokeningizni quyidagi qatorga yozing yoki muhit o'zgaruvchisi (env) orqali bering
+TOKEN = "SIZNING_TOKENINGIZNI_SHU_YERGA_YOZING"
+ADMIN_ID = 7948989650  # Admin ID raqamini tekshiring
 
 # ===== FAYLLAR =====
 USERS_FILE = "users.json"
@@ -40,7 +41,7 @@ async def set_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
     users[uid] = {"name": update.effective_user.first_name, "lang": update.message.text}
     save(USERS_FILE, users)
     btn = [[KeyboardButton("📞 Raqam yuborish", request_contact=True)]]
-    await update.message.reply_text("Raqamingizni yuboring:", reply_markup=ReplyKeyboardMarkup(btn, resize_keyboard=True))
+    await update.message.reply_text("Iltimos, raqamingizni yuboring:", reply_markup=ReplyKeyboardMarkup(btn, resize_keyboard=True))
     return PHONE
 
 async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -54,19 +55,29 @@ async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def choose_package(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["package"] = update.message.text
-    await update.message.reply_text("To‘y sanasini kiriting (YYYY-MM-DD):", reply_markup=ReplyKeyboardRemove())
+    await update.message.reply_text("To‘y sanasini kiriting (Masalan: 05.05.2026 yoki 2026-05-05):", reply_markup=ReplyKeyboardRemove())
     return DATE
 
 async def get_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        datetime.strptime(update.message.text, "%Y-%m-%d")
-        context.user_data["date"] = update.message.text
-        kb = [["Nikoh", "Banket"], ["Xatna", "Tug'ilgan kun"]]
-        await update.message.reply_text("Marosim turini tanlang:", reply_markup=ReplyKeyboardMarkup(kb, resize_keyboard=True))
-        return EVENT
-    except:
-        await update.message.reply_text("❌ Xato format. Iltimos, YYYY-MM-DD ko'rinishida yozing.")
+    text = update.message.text.replace("/", ".").replace("-", ".")
+    
+    # Sana formatlarini tekshirish
+    valid_date = None
+    for fmt in ("%Y.%m.%d", "%d.%m.%Y"):
+        try:
+            valid_date = datetime.strptime(text, fmt)
+            break
+        except:
+            continue
+            
+    if not valid_date:
+        await update.message.reply_text("❌ Xato format. Iltimos, 2026-05-05 yoki 05.05.2026 formatida yozing.")
         return DATE
+        
+    context.user_data["date"] = valid_date.strftime("%Y-%m-%d")
+    kb = [["Nikoh", "Banket"], ["Xatna", "Tug'ilgan kun"]]
+    await update.message.reply_text("Marosim turini tanlang:", reply_markup=ReplyKeyboardMarkup(kb, resize_keyboard=True))
+    return EVENT
 
 async def get_event(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["event"] = update.message.text
@@ -92,7 +103,8 @@ async def confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     orders.append(order)
     save(ORDERS_FILE, orders)
     
-    await context.bot.send_message(ADMIN_ID, f"Yangi buyurtma!\n👤 {order['name']}\n📞 {order['phone']}\n📦 {order['package']}\n📅 {order['date']}")
+    # Adminga yuborish
+    await context.bot.send_message(ADMIN_ID, f"📥 Yangi buyurtma!\n👤 {order['name']}\n📞 {order['phone']}\n📦 {order['package']}\n📅 {order['date']}\n🎉 {order['event']}")
     await context.bot.send_location(ADMIN_ID, *order["location"])
     
     await update.message.reply_text("✅ Buyurtma qabul qilindi!", reply_markup=ReplyKeyboardRemove())
@@ -105,10 +117,11 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ===== ADMIN =====
 async def admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID: return
-    await update.message.reply_text("Admin panel. Buyruqlar: /broadcast, /orders")
+    await update.message.reply_text("Admin panelga xush kelibsiz.\n/broadcast - Xabar tarqatish\n/orders - Buyurtmalarni ko'rish")
 
 async def show_orders(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID: return
+    if not orders: await update.message.reply_text("Buyurtmalar mavjud emas.")
     for o in orders:
         await update.message.reply_text(f"👤 {o['name']}: {o['package']} - {o['date']}")
 
@@ -128,6 +141,7 @@ async def send_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     app = Application.builder().token(TOKEN).build()
 
+    # Foydalanuvchi suhbati
     conv = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
@@ -142,6 +156,7 @@ def main():
         fallbacks=[CommandHandler("cancel", cancel)]
     )
 
+    # Admin xabar tarqatish
     broadcast_conv = ConversationHandler(
         entry_points=[CommandHandler("broadcast", broadcast_start)],
         states={BROADCAST_STATE: [MessageHandler(filters.TEXT, send_broadcast)]},
