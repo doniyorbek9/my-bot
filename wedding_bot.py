@@ -25,7 +25,6 @@ USERS_FILE = "users.json"
 ORDERS_FILE = "orders.json"
 PRICES_FILE = "prices.json"
 
-# ===== LOAD/SAVE =====
 def load(file, default):
     if not os.path.exists(file):
         return default
@@ -78,13 +77,19 @@ async def set_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     return PHONE
 
-# ===== PHONE (FIXED) =====
+# ===== PHONE (FULL FIX) =====
 async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message.contact:
-        await update.message.reply_text("❌ Iltimos tugma orqali raqam yuboring")
+    contact = update.message.contact
+
+    if not contact:
+        await update.message.reply_text("❌ Tugma orqali raqam yuboring")
         return PHONE
 
-    phone = update.message.contact.phone_number
+    if contact.user_id != update.effective_user.id:
+        await update.message.reply_text("❌ Faqat o'zingizni raqamingizni yuboring")
+        return PHONE
+
+    phone = contact.phone_number
     context.user_data["phone"] = phone
 
     kb = [["1-Paket","2-Paket"],["3-Paket","4-Paket"]]
@@ -97,14 +102,17 @@ async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Paket tanlang:"
     )
 
-    await update.message.reply_text(text, reply_markup=ReplyKeyboardMarkup(kb, resize_keyboard=True))
+    await update.message.reply_text(
+        text,
+        reply_markup=ReplyKeyboardMarkup(kb, resize_keyboard=True)
+    )
     return PACKAGE
 
 # ===== PACKAGE =====
 async def choose_package(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["package"] = update.message.text
     await update.message.reply_text(
-        "To‘y sanasini kiriting (YYYY-MM-DD):",
+        "To‘y sanasi (YYYY-MM-DD):",
         reply_markup=ReplyKeyboardRemove()
     )
     return DATE
