@@ -420,12 +420,27 @@ async def choose_ceremony(callback: CallbackQuery, state: FSMContext):
 async def got_date(message: Message, state: FSMContext):
     lang = get_user_lang(message.from_user.id)
     txt = message.text.strip()
-    try:
-        event_date = datetime.strptime(txt, "%d.%m.%Y").date()
-        if event_date < date.today():
-            await message.answer(t(lang, "date_error"))
-            return
-    except ValueError:
+    # Try multiple date formats
+    event_date = None
+    for fmt in ["%d.%m.%Y", "%d.%-m.%Y", "%d/%m/%Y", "%Y-%m-%d"]:
+        try:
+            event_date = datetime.strptime(txt, fmt).date()
+            break
+        except ValueError:
+            continue
+    # Also try parsing DD.M.YYYY manually
+    if event_date is None:
+        import re
+        m = re.match(r"^(\d{1,2})\.(\d{1,2})\.(\d{4})$", txt)
+        if m:
+            try:
+                event_date = date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
+            except ValueError:
+                pass
+    if event_date is None:
+        await message.answer(t(lang, "date_error"))
+        return
+    if event_date < date.today():
         await message.answer(t(lang, "date_error"))
         return
 
@@ -730,8 +745,7 @@ async def do_broadcast(message: Message, state: FSMContext):
 
 # ==================== MAIN ====================
 async def main():
-    from aiogram.client.default import DefaultBotProperties
-    bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
     dp = Dispatcher(storage=MemoryStorage())
     dp.include_router(router)
     logger.info("Bot ishga tushdi...")
